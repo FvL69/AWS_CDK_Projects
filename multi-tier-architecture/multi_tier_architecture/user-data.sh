@@ -3,6 +3,9 @@
 # Update the system
 sudo dnf update -y
 
+# Install stress for testing auto scaling.
+sudo dnf install -y stress
+
 # Install Apache web server
 sudo dnf install -y httpd
 

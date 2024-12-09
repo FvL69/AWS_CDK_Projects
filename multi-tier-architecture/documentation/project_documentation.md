@@ -75,22 +75,22 @@ ACL's, Routetables, SubnetRoutetableAssociations, logical routing (e.g, each Pub
 EIP's, Gateway attachments and a through an IAM policy restricted default SG will be created by the L2 Vpc construct.   
 
 
-## 2. Create and configure AWS services: Security Groups, EC2 instances, RDS database, Application Load Balancer,    
-## Target Group, Listener, ASG, EC2 Instance Connect Endpoint and IAM policy.   
+## 2. Create and configure AWS services: Security Groups, EC2 launch template, RDS database, Application Load Balancer,    
+## Target Group, ASG, Listener, EC2 Instance Connect Endpoint and IAM policy.   
 
 **Diagram link** (version 1: added admin access)  
 [Diagram1](../includes/diagrams/diagram1.png)
 
 ## The AWS services:
  
-   ### 1. Associate Security Groups with the EC2's, RDSdb, ALB and EIC_Endpoint.
+   ### 1. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
    **Purpose:**  
     A security group acts as firewall on the instance level. By default all outbound traffic is allowed but i've restricted   
     this feature for more fine grained control of the data traffic. There are exeptions of incomming traffic that is   
     allowed out despite the allow_all_outbound=False setting, e.g.: 
 
    **Difficulties:**  
-    Just making sure that all the data traffic can find it's way to the intended services by applying the correct rules.  
+    Just making sure that all the data traffic can find it's way restricted solely to the intended services by applying the correct rules.  
 
    ### 2. Create an EC2 Instance (Linux 2023 AMI) in each ApplicationSubnet.  
    **Purpose:**  
@@ -108,9 +108,30 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
    ### 3a. Create a Target Group.
 
-   ### 3b. Create a Listener
+   ### 3b. Create a HTTPS Listener.
+   **purpose:**  
+   A listener checks for connection requests.  
+   To create an HTTPS listener, you must deploy at least one SSL server certificate on your load balancer.  
+   The load balancer decrypt requests from clients before sending them to the targets.  
+   Also specify a security policy, which is used to negotiate secure connections between clients and the load balancer.  
+
+   - Configure Iam Policy  
+
+   Listener config:  
+   - ACM certificate (self signed) for SSL/TLS termination.   
+   - Default_action prop: forward to target group.     
+
+   **Dificulties:**  
+   To configure certificates: Sequence[IListenerCertificate] but the API reference only provides the attribute and   
+   no methods! So it wouldn't cdk synth. I learned that concrete classes provide the actual implementations and  
+   static factory methods. In this case: elbv2.ListenerCertificate.from_arn(self.certificate_arn).   
 
    ### 4. Create an Auto Scaling Group.
+   AWS CLI to verify the attachment status:  
+   aws autoscaling describe-traffic-sources --auto-scaling-group-name my-asg  
+
+   Target Tracking Scaling enabled:  
+   The AutoScaling construct library will create the required CloudWatch alarms and AutoScaling policies for you.  
 
    ### 5. Create a RDS db in DatabaseSubnet1.  
     Note: When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances  
