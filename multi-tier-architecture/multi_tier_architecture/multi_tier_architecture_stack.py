@@ -35,6 +35,7 @@ class MultiTierArchitectureStack(Stack):
             ]
         )
 
+
         
         ### SECURITY GROUPS ###
 
@@ -137,7 +138,7 @@ class MultiTierArchitectureStack(Stack):
             ]   
         )       
 
-        # Adding additional permissions to use EC2 Instance Connect Endpoint to connect to instances.
+        # Adding additional permissions to use EIC Endpoint to connect to instances.
         self.EIC_Endpoint_Policy.add_statements(
             iam.PolicyStatement(
                 sid="EC2InstanceConnect",
@@ -193,9 +194,7 @@ class MultiTierArchitectureStack(Stack):
         
 
 
-
         ###  KEY PAIR, USER DATA  ###
-
         
         # Create key pair for EC2 launch template.
         self.AdminKeyPair = ec2.KeyPair(
@@ -216,8 +215,7 @@ class MultiTierArchitectureStack(Stack):
 
 
 
-        ###  lAUNCH TEMPLATE IAM POLICY, EC2 LAUNCH TEMPLATE, APPLICATION LOAD BALANCER, TARGET GROUP, AUTO SCALING GROUP, LISTENER  ###
-
+        ###  lAUNCH TEMPLATE IAM POLICY, EC2 LAUNCH TEMPLATE, AUTO SCALING GROUP, APPLICATION LOAD BALANCER, TARGET GROUP, LISTENER  ###
 
         # Create IAM Policy for launch template.
         self.launchTemplatePolicy = iam.Policy(
@@ -276,7 +274,7 @@ class MultiTierArchitectureStack(Stack):
         self.launchTemplatePolicy.attach_to_group(self.AdminGroup)
 
 
-        # Create an EC2 launch template for ASG.
+        # EC2 launch template for ASG.
         self.launchTemplate = ec2.LaunchTemplate(
             self, "EC2LaunchTemplate",
             launch_template_name="WebServerLaunchTemplate",
@@ -296,47 +294,7 @@ class MultiTierArchitectureStack(Stack):
             )],
             user_data=self.user_data,
         )
-        
 
-        # Application Load Balancer.
-        self.alb = elbv2.ApplicationLoadBalancer(
-            self, "ALB",
-            vpc=self.vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            internet_facing=True,
-            http2_enabled=True,
-            cross_zone_enabled=True,
-            security_group=self.SG_ALB,
-            ip_address_type=elbv2.IpAddressType.IPV4,
-            x_amzn_tls_version_and_cipher_suite_headers=True, 
-            idle_timeout=Duration.seconds(60),
-            desync_mitigation_mode=elbv2.DesyncMitigationMode.DEFENSIVE,
-            drop_invalid_header_fields=False,
-        )
-
-
-        # Target group.
-        self.targetgroup = elbv2.ApplicationTargetGroup(
-            self, "TargetGroup",
-            vpc=self.vpc,
-            load_balancing_algorithm_type=elbv2.TargetGroupLoadBalancingAlgorithmType.ROUND_ROBIN,
-            port=80,
-            protocol=elbv2.ApplicationProtocol.HTTP,
-            target_type=elbv2.TargetType.INSTANCE,
-            target_group_name="TargetGroup",
-            stickiness_cookie_duration=Duration.seconds(43200),
-            stickiness_cookie_name="ALBCOOKIE",
-            health_check=elbv2.HealthCheck(
-                port="80",
-                protocol=elbv2.Protocol.HTTP,
-                healthy_http_codes="200-299",
-                healthy_threshold_count=5,
-                interval=Duration.seconds(30),
-                path="/",
-                timeout=Duration.seconds(5),
-                unhealthy_threshold_count=2,
-            ),
-        )
 
         # Auto Scaling Group.
         self.asg = autoscaling.AutoScalingGroup(
@@ -353,16 +311,56 @@ class MultiTierArchitectureStack(Stack):
         # Enable target tracking scaling policy for ASG.
         self.asg.scale_on_cpu_utilization(
             "CPUScaling",
-            target_utilization_percent=50,
+            target_utilization_percent=40,
             cooldown=Duration.minutes(4),
         )
+        
 
-        # Attach ASG to target group.
+        # Application Load Balancer.
+        self.alb = elbv2.ApplicationLoadBalancer(
+            self, "ALB",
+            vpc=self.vpc,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            internet_facing=True,
+            http2_enabled=True,
+            cross_zone_enabled=True,
+            security_group=self.SG_ALB,
+            preserve_host_header=True,
+            x_amzn_tls_version_and_cipher_suite_headers=True,
+            preserve_xff_client_port=True,
+            xff_header_processing_mode=elbv2.XffHeaderProcessingMode.APPEND,
+            ip_address_type=elbv2.IpAddressType.IPV4, 
+            idle_timeout=Duration.seconds(60),
+            desync_mitigation_mode=elbv2.DesyncMitigationMode.DEFENSIVE,
+            drop_invalid_header_fields=True,
+        )
+
+
+        # Application Target group.
+        self.targetgroup = elbv2.ApplicationTargetGroup(
+            self, "TargetGroup",
+            vpc=self.vpc,
+            load_balancing_algorithm_type=elbv2.TargetGroupLoadBalancingAlgorithmType.ROUND_ROBIN,
+            port=80,
+            protocol=elbv2.ApplicationProtocol.HTTP,
+            target_type=elbv2.TargetType.INSTANCE,
+            target_group_name="TargetGroup",
+            health_check=elbv2.HealthCheck(
+                port="80",
+                protocol=elbv2.Protocol.HTTP,
+                healthy_http_codes="200-299",
+                healthy_threshold_count=5,
+                interval=Duration.seconds(30),
+                path="/",
+                timeout=Duration.seconds(5),
+                unhealthy_threshold_count=2,
+            ),
+        )
+        # Register ASG as a target to TG.
         self.targetgroup.add_target(self.asg)
 
 
-
-        # Certificate arn for listener.
+        # Certificate arn for HTTPS listener.
         self.certificate_arn =f"arn:aws:acm:{self.region}:{self.account}:certificate/c4f47c92-45c2-44de-8f6b-eda56017be76"
 
         # HTTPS listener.
@@ -372,8 +370,10 @@ class MultiTierArchitectureStack(Stack):
             default_action=elbv2.ListenerAction.forward(target_groups=[self.targetgroup]),
             port=443,
             protocol=elbv2.ApplicationProtocol.HTTPS,
+            ssl_policy=elbv2.SslPolicy.RECOMMENDED_TLS, 
             open=True,
         )
+
         
 
         ###  RDS DATABASE  ###
@@ -404,20 +404,12 @@ class MultiTierArchitectureStack(Stack):
         ### SECURITY GROUP RULES ###
 
         # Application Load Balancer Ingress rules.
-        # Ingress rule for HTTP requests.
-        self.SG_ALB.add_ingress_rule(
-            peer=ec2.Peer.ipv4("0.0.0.0/0"),
-            connection=ec2.Port.tcp(80),
-            description="Allow inbound HTTP traffic from Internet.",
-        )
-
         # Ingress rule for HTTPS requests.
         self.SG_ALB.add_ingress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(443),
-            description="Allow inbound HTTPS traffic from Internet.",
+            description="Allow inbound HTTPS traffic from anywhere.",
         )
-
         # Ingress rule from SG_AppInstances.
         self.SG_ALB.add_ingress_rule(
             peer=self.SG_AppInstances,
@@ -473,17 +465,17 @@ class MultiTierArchitectureStack(Stack):
             connection=ec2.Port.tcp(3306),
             description="Allow outbound MySQL traffic to SG_RDSdb",
         )
-        # Egress rule to NATGateway on port 80.
+        # Egress rule to anywhere on port 80.
         self.SG_AppInstances.add_egress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(80),
-            description="Allow outbound HTTP traffic to NatGateway",
+            description="Allow outbound HTTP traffic through NatGateway",
         )
-        # Egress rule to NatGateway on port 443.
+        # Egress rule to anywhere on port 443.
         self.SG_AppInstances.add_egress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(443),
-            description="Allow outbound HTTPS traffic to NatGateway",
+            description="Allow outbound HTTPS traffic through NatGateway",
         )
 
 

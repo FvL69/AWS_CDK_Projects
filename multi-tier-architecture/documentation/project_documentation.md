@@ -41,7 +41,8 @@ resources in the private subnets.
     IP addresses entirely unreserved, if you prefer but the subnet numbering will be altered when deploying   
     these unreserved subnets/IP addresses.      
 
-## Project constructs:  [AWS_CDK_Constructs](https://docs.aws.amazon.com/cdk/v2/guide/constructs.html)
+## Project constructs:  
+[AWS_CDK_Constructs](https://docs.aws.amazon.com/cdk/v2/guide/constructs.html)  
 
     This project is, for the most part, build with 'L2 constructs', these are 'curated constructs' made by the AWS CDK team.     
     Which entails that: L2 constructs include sensible default property configurations, best practice security   
@@ -107,6 +108,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    In case of an unhealthy target: check SG config or EC2 user data input.  
 
    ### 3a. Create a Target Group.
+   A target group is used to route requests to one or more registered targets.
 
    ### 3b. Create a HTTPS Listener.
    **purpose:**  
@@ -116,6 +118,10 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    Also specify a security policy, which is used to negotiate secure connections between clients and the load balancer.  
 
    - Configure Iam Policy  
+
+   **dificulties**  
+   - Unable to reach web server after upgrading listener from http to https.  
+
 
    Listener config:  
    - ACM certificate (self signed) for SSL/TLS termination.   
@@ -131,7 +137,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    aws autoscaling describe-traffic-sources --auto-scaling-group-name my-asg  
 
    Target Tracking Scaling enabled:  
-   The AutoScaling construct library will create the required CloudWatch alarms and AutoScaling policies for you.  
+   The AutoScaling construct library will create the required CloudWatch alarms and AutoScaling policies.  
 
    ### 5. Create a RDS db in DatabaseSubnet1.  
     Note: When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances  
