@@ -142,6 +142,8 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    ### 5. Create a RDS db in DatabaseSubnet1.  
     Note: When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances  
 
+    
+
    ### 6. Create an EIC_Endpoint:  
  **Note:**   
  This is a L1 construct, a low lvl construct which uses a Cfn (Cloudformation) naming convention.  
@@ -152,7 +154,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
  **Difficulties:**  
  It was a bit of a search to figure out the correct parameter syntax for the EIC attributes and IAM policy.   
- For advice and quick search i use Amazone Q, e.g. i didn't know which endpoint to use for reaching an EC2 without a public IP.    
+ For advice and quick search i use Amazone Q, e.g. i didn't know which endpoint to use for connecting with EC2 without a public IP.    
     
     EIC_Endpoint benefits:  
         - Allows access to private instances which have no public IP.  

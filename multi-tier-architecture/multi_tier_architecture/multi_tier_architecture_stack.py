@@ -217,6 +217,7 @@ class MultiTierArchitectureStack(Stack):
 
         ###  lAUNCH TEMPLATE IAM POLICY, EC2 LAUNCH TEMPLATE, AUTO SCALING GROUP, APPLICATION LOAD BALANCER, TARGET GROUP, LISTENER  ###
 
+
         # Create IAM Policy for launch template.
         self.launchTemplatePolicy = iam.Policy(
             self, "LaunchTemplatePolicy",
@@ -269,7 +270,6 @@ class MultiTierArchitectureStack(Stack):
                 ),
             ],
         )
-
         # Attach policy to AdminGroup.
         self.launchTemplatePolicy.attach_to_group(self.AdminGroup)
 
@@ -376,8 +376,8 @@ class MultiTierArchitectureStack(Stack):
 
         
 
-        ###  RDS DATABASE  ###
-        
+        ###  RDS DATABASE, RDS IAM Policy  ###
+
         # RDS database. 
         self.RDSdb = rds.DatabaseInstance(
             self, "RDSdb",
@@ -385,8 +385,9 @@ class MultiTierArchitectureStack(Stack):
             instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO),
             vpc=self.vpc,
             availability_zone=self.vpc.availability_zones[0],
-            multi_az=False, # If True: RDS will automatically create and manage a standby replica in a different AZ. 
+            multi_az=False, # If True: RDS will create and manage a synchronous, standby replica in a different AZ. 
             publicly_accessible=False,
+            iam_authentication=True,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
             security_groups=[self.SG_RDSdb],
             instance_identifier="MyRdsInstance",
@@ -394,10 +395,31 @@ class MultiTierArchitectureStack(Stack):
             storage_type=rds.StorageType.GP3,
             allocated_storage=20,
             max_allocated_storage=20,
-            backup_retention=Duration.days(0),
+            backup_retention=Duration.days(7), 
             delete_automated_backups=True,
             deletion_protection=False
         )
+
+
+        # IAM policy 'ReadOnlyAccess' for Admingroup.
+        self.RDSReadOnlyPolicy = iam.Policy(
+            self, "RDSReadOnlyPolicy",
+            statements=[
+                iam.PolicyStatement(
+                    sid="AllowRead",
+                    actions=[
+                        "rds:Describe*",
+                        "rds:ListTagsForResource",
+                    ],
+                    effect=iam.Effect.ALLOW,
+                    resources=[
+                        f"arn:aws:rds:{self.region}:{self.account}:db:MyRdsInstance",
+                    ],
+                ),
+            ],
+        )
+        # Attach policy to AdminGroup. For RDS service lvl access. (view in console, describe instances, etc.)     
+        self.RDSReadOnlyPolicy.attach_to_group(self.AdminGroup)
 
 
 
@@ -417,7 +439,7 @@ class MultiTierArchitectureStack(Stack):
             description="Allow inbound HTTP traffic from SG_AppInstances"
         )
 
-        # # Application Load Balancer Egress rules.
+        # Application Load Balancer Egress rules.
         # Egress rule to SG_AppInstances.
         self.SG_ALB.add_egress_rule(
             peer=self.SG_AppInstances,
