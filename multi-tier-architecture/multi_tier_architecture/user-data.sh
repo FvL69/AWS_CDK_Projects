@@ -6,7 +6,7 @@ sudo dnf update -y
 # Install mysql client from MariaDB.
 sudo dnf install mariadb105
 
-# Install stress for testing auto scaling.
+# Install stress to test auto scaling.
 sudo dnf install -y stress
 
 # Install Apache web server

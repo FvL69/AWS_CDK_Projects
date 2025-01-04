@@ -17,6 +17,7 @@ class MultiTierArchitectureStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        # Create VPC.
         self.vpc = ec2.Vpc(
             self, "VPC",
             ip_addresses=ec2.IpAddresses.cidr("10.0.0.0/20"), # A /20 cidr gives 4096 ip addresses to work with.
@@ -36,8 +37,35 @@ class MultiTierArchitectureStack(Stack):
         )
 
 
+        ###  NETWORK ACCESS CONTROL LISTS  ###
+
+        # Public ACL.
+        self.publicAcl = ec2.NetworkAcl(
+            self, "PublicSubnetNacl",
+            vpc=self.vpc,
+            network_acl_name="PublicSubnetNACL",
+            subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC)
+        )
+
+        # Private with Egress ACL.
+        self.privEgressAcl = ec2.NetworkAcl(
+            self, "PrivEgressSubnetNacl",
+            vpc=self.vpc,
+            network_acl_name="PrivateWithEgressSubnetNACL",
+            subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
+        )
+
+        # Private Isolated ACL.
+        self.PrivIsoAcl = ec2.NetworkAcl(
+            self, "PrivIsoSubnetNacl",
+            vpc=self.vpc,
+            network_acl_name="PrivateIsolatedSubnetNACL",
+            subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED)
+        )
+
+
         
-        ### SECURITY GROUPS ###
+        ###  SECURITY GROUPS  ###
 
         # Security Group for AppInstances.
         self.SG_AppInstances = ec2.SecurityGroup(
@@ -360,7 +388,7 @@ class MultiTierArchitectureStack(Stack):
         self.targetgroup.add_target(self.asg)
 
 
-        # Certificate arn for HTTPS listener.
+        # Certificate for HTTPS listener.
         self.certificate_arn =f"arn:aws:acm:{self.region}:{self.account}:certificate/c4f47c92-45c2-44de-8f6b-eda56017be76"
 
         # HTTPS listener.
@@ -418,8 +446,307 @@ class MultiTierArchitectureStack(Stack):
                 ),
             ],
         )
-        # Attach policy to AdminGroup. For RDS service lvl access. (view in console, describe instances, etc.)     
+        # Attach policy to grand AdminGroup service lvl access. (view in console, describe instances, etc.)     
         self.RDSReadOnlyPolicy.attach_to_group(self.AdminGroup)
+
+
+
+        ###  NETWORK ACL RULES  ###
+
+        # Subnet CIDR ranges as CONSTANTS for clarity in ACL rule definition and easy maintenance.
+        PUBLIC_AZ1 = "10.0.0.0/25"
+        PUBLIC_AZ2 = "10.0.0.128/25"
+        PRIVATE_EGRESS_AZ1 = "10.0.2.0/23"
+        PRIVATE_EGRESS_AZ2 = "10.0.4.0/23"
+        PRIVATE_ISOLATED_AZ1 = "10.0.6.0/24"
+        PRIVATE_ISOLATED_AZ2 = "10.0.7.0/24"
+
+
+        # PUBLIC SUBNET ACL
+        # Ingress Rules
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_IngressFromAnywhere_HTTP",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), # Incomming requests denied.
+            rule_number=100,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.DENY,
+        )
+
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_IngressFromAnywhere_HTTPS",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), # Incomming requests granted.
+            rule_number=120,
+            traffic=ec2.AclTraffic.tcp_port(443),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_IngressFromPrivateEgressAZ1_HTTP",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), # TG health checks.
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_IngressFromPrivateEgressAZ2_HTTP",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), # TG health checks.
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+
+        # PUBLIC SUBNET ACL
+        # Egress Rules
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_EgressToAnywhere_HTTP",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), # Web server response.
+            rule_number=100,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_EgressToAnywhere_HTTPS",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), # Web server response.
+            rule_number=120,
+            traffic=ec2.AclTraffic.tcp_port(443),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_EgressToPrivateEgressAZ1_HTTP",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), # ALB traffic, TG health checks.
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.publicAcl.add_entry(
+            "publicSubnetAcl_EgressToPrivateEgressAZ2_HTTP",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), # ALB traffic, TG health checks.
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+
+        # PRIVATE with EGRESS SUBNET ACL
+        # Ingress Rules
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressFromPublicAZ1_HTTP",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1), # ALB traffic, TG health checks.
+            rule_number=100,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressFromPublicAZ2_HTTP",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2), # ALB traffic, TG health checks.
+            rule_number=120,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressFromPrivateIsoAZ1_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), # RDS DB traffic.
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressToPrivateIsoAZ2_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), # RDS DB traffic in case of DR.
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressFromAnywhere_HTTPS",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), # EIC Endpoint HTTPS for AWS API calls
+            rule_number=180,
+            traffic=ec2.AclTraffic.tcp_port(443),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressFromPrivEgressAZ1_SSH",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), # Internal SSH traffic with EC2's.
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_IngressFromPrivEgressAZ2_SSH",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), # Internal SSH traffic with EC2's.
+            rule_number=220,
+            traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+
+        # PRIVATE with EGRESS SUBNET ACL
+        # Egress Rules
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToPublicAZ1_HTTP",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1), # TG health checks.
+            rule_number=100,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToPublicAZ2_HTTP",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2), # TG health checks.
+            rule_number=120,
+            traffic=ec2.AclTraffic.tcp_port(80),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToPrivateIsoAZ1_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), # RDS DB traffic.
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToPrivateIsoAZ2_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), # RDS DB traffic in case of DR.
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToAnywhere_HTTPS",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), # EIC Endpoint HTTPS traffic for AWS API calls
+            rule_number=180,
+            traffic=ec2.AclTraffic.tcp_port(443),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToPrivEgressAZ1_SSH",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), # Internal SSH traffic with EC2's.
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EgressToPrivEgressAZ2_SSH",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), # Internal SSH traffic with EC2's.
+            rule_number=220,
+            traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+
+        # PRIVATE ISOLATED SUBNET ACL
+        # Ingress Rules
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_IngressFromPrivEgressAZ1_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), # DB traffic.
+            rule_number=100,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_IngressFromPrivEgressAZ2_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), # DB traffic.
+            rule_number=120,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_IngressFromPrivIsolatedAZ1_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), # DB traffic in case of DR.
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_IngressFromPrivIsolatedAZ2_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), # DB traffic in case of DR.
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # PRIVATE ISOLATED SUBNET ACL
+        # Egress Rules
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_EgressToPrivEgressAZ1_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1),
+            rule_number=100,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_EgressToPrivEgressAZ2_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2),
+            rule_number=120,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_EgressToPrivIsolatedAZ1_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), # DB traffic in case of DR.
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        self.PrivIsoAcl.add_entry(
+            "privateIsolatedSubnetAcl_EgressToPrivIsolatedAZ2_MYSQL",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), # DB traffic in case of DR.
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port(3306),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
 
 
 

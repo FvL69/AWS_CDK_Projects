@@ -76,19 +76,30 @@ ACL's, Routetables, SubnetRoutetableAssociations, logical routing (e.g, each Pub
 EIP's, Gateway attachments and a through an IAM policy restricted default SG will be created by the L2 Vpc construct.   
 
 
-## 2. Create and configure AWS services: Security Groups, EC2 launch template, RDS database, Application Load Balancer,    
+## 2. Create and configure AWS services: Network Access Control Lists (ACL's), Security Groups, EC2 launch template, RDS database, Application Load Balancer,    
 ## Target Group, ASG, Listener, EC2 Instance Connect Endpoint and IAM policy.   
 
 **Diagram link** (version 1: added admin access)  
 [Diagram1](../includes/diagrams/diagram1.png)
 
 ## The AWS services:
+
+   ### 1. Associate ACL's with the appropriate subnets.  
+   **Purpose:** 
+   - Each subnet type has rules to communicate with its counterpart in the other AZ   
+   - Private egress subnets can communicate with isolated subnets in both AZs  
+   - Rule numbers are spaced to allow for future additions  
+   - Clear naming convention for each rule  
+   - Bidirectional rules (both ingress and egress) for each communication path  
+
+   **Difficulties:**  
+   
+
  
    ### 1. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
    **Purpose:**  
     A security group acts as firewall on the instance level. By default all outbound traffic is allowed but i've restricted   
-    this feature for more fine grained control of the data traffic. There are exeptions of incomming traffic that is   
-    allowed out despite the allow_all_outbound=False setting, e.g.: 
+    this feature for more fine grained control of the data traffic. 
 
    **Difficulties:**  
     Just making sure that all the data traffic can find it's way restricted solely to the intended services by applying the correct rules.  
@@ -142,7 +153,15 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    ### 5. Create a RDS db in DatabaseSubnet1.  
     Note: When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances  
 
-    
+   **Purpose:**  
+   - DB created in private isolated subnet, reachable only from EC2 web server in another private subnet.
+   - To store web server data.
+
+   **Difficulties:**  
+   - Installing mariadb105 as a SQL client for connecting to DB. (EC2 user-data)    
+   - Because of secure VPC/subnet setup just using password auth for connecting to DB only from EC2's.  
+   - For AdminGroup: Configure read-only access in MYSQL (DB), and read-only access for RDS service lvl with IAM Policy. (Stack)  
+
 
    ### 6. Create an EIC_Endpoint:  
  **Note:**   
