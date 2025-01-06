@@ -519,7 +519,7 @@ class MultiTierArchitectureStack(Stack):
         # PUBLIC SUBNET ACL
         # Egress Rules
 
-        # Web server response.
+        # Outbound response.
         self.publicAcl.add_entry(
             "publicSubnetAcl_EgressToAnywhere_HTTP",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
@@ -529,7 +529,7 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Web server response.
+        # Outbound response.
         self.publicAcl.add_entry(
             "publicSubnetAcl_EgressToAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
@@ -644,6 +644,26 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports ingress, e.g. return traffic, load balancing and application layer protocols communication.
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EphemeralPortsIngressAZ1",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
+            rule_number=240,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports ingress, e.g. return traffic, load balancing and application layer protocols communication.
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EphemeralPortsIngressAZ2",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
+            rule_number=240,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
 
         # PRIVATE with EGRESS SUBNET ACL
         # Egress Rules
@@ -714,6 +734,26 @@ class MultiTierArchitectureStack(Stack):
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
             rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports egress, e.g. return traffic, load balancing and application layer protocols communication.
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EphemeralPortsEgressAZ1",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
+            rule_number=240,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports egress, e.g. return traffic, load balancing and application layer protocols communication.
+        self.privEgressAcl.add_entry(
+            "privateEgressSubnetAcl_EphemeralPortsEgressAZ2",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
+            rule_number=240,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
         )

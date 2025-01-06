@@ -88,10 +88,12 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    **Purpose:** 
    - I have created one ACL for similar subnets in both AZ's, this reduces complexity and maintenance overhead and matches my architectures defence layers as intended.    
    - Also is there less chance of misconfiguration when updating rules.    
-   - Ephemeral ports rules added to avoid blocking client requests responses.  
+   - Ephemeral ports (1024-65535) rules added to cover the different types of clients that might initiate traffic to public-facing instances. I.e:  
+     - Requests originating from Elastic Load Balancing use ports 1024-65535.   
+     - A NAT gateway uses ports 1024-65535.  
    
    **Difficulties:**  
-   - Making sure that all services can communicate as intended and blocking everything that's not wanted. Every ingress rule has an egress counter part.
+   - Making sure that all services can communicate as intended and blocking everything that's not wanted. Every ingress rule has an egress counter part due to the stateless nature of the network ACL.
 
  
    ### 2. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
@@ -127,10 +129,6 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    Also specify a security policy, which is used to negotiate secure connections between clients and the load balancer.  
 
    - Configure Iam Policy  
-
-   **dificulties**  
-   - Unable to reach web server after upgrading listener from http to https.  
-
 
    Listener config:  
    - ACM certificate (self signed) for SSL/TLS termination.   
