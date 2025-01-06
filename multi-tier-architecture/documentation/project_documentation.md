@@ -84,19 +84,17 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
 ## The AWS services:
 
-   ### 1. Associate ACL's with the appropriate subnets.  
+   ### 1. Attach ACL's with the appropriate subnets and create the appropriate rules needed.  
    **Purpose:** 
-   - Each subnet type has rules to communicate with its counterpart in the other AZ   
-   - Private egress subnets can communicate with isolated subnets in both AZs  
-   - Rule numbers are spaced to allow for future additions  
-   - Clear naming convention for each rule  
-   - Bidirectional rules (both ingress and egress) for each communication path  
-
-   **Difficulties:**  
+   - I have created one ACL for similar subnets in both AZ's, this reduces complexity and maintenance overhead and matches my architectures defence layers as intended.    
+   - Also is there less chance of misconfiguration when updating rules.    
+   - Ephemeral ports rules added to avoid blocking client requests responses.  
    
+   **Difficulties:**  
+   - Making sure that all services can communicate as intended and blocking everything that's not wanted. Every ingress rule has an egress counter part.
 
  
-   ### 1. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
+   ### 2. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
    **Purpose:**  
     A security group acts as firewall on the instance level. By default all outbound traffic is allowed but i've restricted   
     this feature for more fine grained control of the data traffic. 
@@ -104,7 +102,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    **Difficulties:**  
     Just making sure that all the data traffic can find it's way restricted solely to the intended services by applying the correct rules.  
 
-   ### 2. Create an EC2 Instance (Linux 2023 AMI) in each ApplicationSubnet.  
+   ### 3. Create an EC2 Instance (Linux 2023 AMI) in each ApplicationSubnet.  
    **Purpose:**  
    A web server in different AZ's for availability and DR.  
 
@@ -114,14 +112,14 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    user data file would not upload in my EC2's anymore. This got me a bit confused because initially my code worked.  
    Correct way: with open() ; user_data = f.read() ; self.user_data = ec2.UserData.for_linux().custom(user_data).   
 
-   ### 3. Create an Application Load Balancer and attach it to the Public Subnets in both AZ's.  
+   ### 4. Create an Application Load Balancer and attach it to the Public Subnets in both AZ's.  
    **Note:**   
    In case of an unhealthy target: check SG config or EC2 user data input.  
 
-   ### 3a. Create a Target Group.
+   ### 4a. Create a Target Group.
    A target group is used to route requests to one or more registered targets.
 
-   ### 3b. Create a HTTPS Listener.
+   ### 4b. Create a HTTPS Listener.
    **purpose:**  
    A listener checks for connection requests.  
    To create an HTTPS listener, you must deploy at least one SSL server certificate on your load balancer.  
@@ -143,14 +141,14 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    no methods! So it wouldn't cdk synth. I learned that concrete classes provide the actual implementations and  
    static factory methods. In this case: elbv2.ListenerCertificate.from_arn(self.certificate_arn).   
 
-   ### 4. Create an Auto Scaling Group.
+   ### 5. Create an Auto Scaling Group.
    AWS CLI to verify the attachment status:  
    aws autoscaling describe-traffic-sources --auto-scaling-group-name my-asg  
 
    Target Tracking Scaling enabled:  
    The AutoScaling construct library will create the required CloudWatch alarms and AutoScaling policies.  
 
-   ### 5. Create a RDS db in DatabaseSubnet1.  
+   ### 6. Create a RDS db in DatabaseSubnet1.  
     Note: When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances  
 
    **Purpose:**  
@@ -163,7 +161,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    - For AdminGroup: Configure read-only access in MYSQL (DB), and read-only access for RDS service lvl with IAM Policy. (Stack)  
 
 
-   ### 6. Create an EIC_Endpoint:  
+   ### 7. Create an EIC_Endpoint:  
  **Note:**   
  This is a L1 construct, a low lvl construct which uses a Cfn (Cloudformation) naming convention.  
 
