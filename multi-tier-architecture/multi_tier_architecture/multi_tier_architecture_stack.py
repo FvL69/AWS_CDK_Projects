@@ -35,8 +35,8 @@ class MultiTierArchitectureStack(Stack):
                 ec2.SubnetConfiguration(cidr_mask=23, name="reserved", subnet_type=ec2.SubnetType.PRIVATE_ISOLATED, reserved=True),
             ]
         )
-
-
+        
+        
         ###  NETWORK ACCESS CONTROL LISTS  ###
 
         # Public ACL.
@@ -210,8 +210,7 @@ class MultiTierArchitectureStack(Stack):
             )
         )
 
-
-        # Create an IAM Group-of-Users.
+        # Create an IAM Group-of-Users for administrative team members.
         self.AdminGroup = iam.Group(
             self, "AdminGroup",
             group_name="AdminGroup",
@@ -298,6 +297,7 @@ class MultiTierArchitectureStack(Stack):
                 ),
             ],
         )
+
         # Attach policy to AdminGroup.
         self.launchTemplatePolicy.attach_to_group(self.AdminGroup)
 
@@ -336,6 +336,7 @@ class MultiTierArchitectureStack(Stack):
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             auto_scaling_group_name="ASG",
         )
+        
         # Enable target tracking scaling policy for ASG.
         self.asg.scale_on_cpu_utilization(
             "CPUScaling",
@@ -377,11 +378,11 @@ class MultiTierArchitectureStack(Stack):
                 port="80",
                 protocol=elbv2.Protocol.HTTP,
                 healthy_http_codes="200-299",
-                healthy_threshold_count=5,
-                interval=Duration.seconds(30),
-                path="/",
-                timeout=Duration.seconds(5),
-                unhealthy_threshold_count=2,
+                healthy_threshold_count=2, 
+                unhealthy_threshold_count=2, 
+                timeout=Duration.seconds(5),  
+                interval=Duration.seconds(10),  
+                path="/",                      
             ),
         )
         # Register ASG as a target to TG.
@@ -420,7 +421,7 @@ class MultiTierArchitectureStack(Stack):
             security_groups=[self.SG_RDSdb],
             instance_identifier="MyRdsInstance",
             removal_policy=RemovalPolicy.DESTROY,
-            storage_type=rds.StorageType.GP3,
+            storage_type=rds.StorageType.GP2,
             allocated_storage=20,
             max_allocated_storage=20,
             backup_retention=Duration.days(7), 
@@ -429,10 +430,20 @@ class MultiTierArchitectureStack(Stack):
         )
 
 
-        # IAM policy 'ReadOnlyAccess' for Admingroup.
+        # IAM policy 'ReadOnlyAccess' for DatabaseGroup.
         self.RDSReadOnlyPolicy = iam.Policy(
             self, "RDSReadOnlyPolicy",
             statements=[
+                iam.PolicyStatement(
+                    sid="AllowConnect",
+                    actions=[
+                        "rds-db:connect",
+                    ],
+                    effect=iam.Effect.ALLOW,
+                    resources=[
+                        f"arn:aws:rds-db:{self.region}:{self.account}:dbuser:{self.RDSdb.instance_identifier}/*"
+                    ],
+                ),
                 iam.PolicyStatement(
                     sid="AllowRead",
                     actions=[
@@ -446,14 +457,21 @@ class MultiTierArchitectureStack(Stack):
                 ),
             ],
         )
-        # Attach policy to grand AdminGroup service lvl access. (view in console, describe instances, etc.)     
-        self.RDSReadOnlyPolicy.attach_to_group(self.AdminGroup)
+
+        # Create an IAM Group_of_Users for DB team members.
+        self.DB_Group = iam.Group(
+            self, "DatabaseGroup",  
+            group_name="DatabaseGroup"          
+        )
+
+        # Attach policy to DatabaseGroup.  
+        self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
 
 
-
+        
         ###  NETWORK ACL RULES  ###
 
-        # CIDR ranges as constants for clarity and maintenance.
+        # CIDR ranges as constants for clarity and easy maintenance.
         PUBLIC_AZ1 = "10.0.0.0/25"
         PUBLIC_AZ2 = "10.0.0.128/25"
         PRIVATE_EGRESS_AZ1 = "10.0.2.0/23"
@@ -465,19 +483,19 @@ class MultiTierArchitectureStack(Stack):
         # PUBLIC SUBNET ACL
         # Ingress Rules
 
-        # Incomming requests, denied.
+        # Incomming requests.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_IngressFromAnywhere_HTTP",
+            "IngressFromAnywhere_HTTP",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
             rule_number=100,
             traffic=ec2.AclTraffic.tcp_port(80),
             direction=ec2.TrafficDirection.INGRESS,
-            rule_action=ec2.Action.DENY,
+            rule_action=ec2.Action.ALLOW,
         )
 
-        # Incomming requests, granted.
+        # Incomming requests.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_IngressFromAnywhere_HTTPS",
+            "IngressFromAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
             rule_number=120,
             traffic=ec2.AclTraffic.tcp_port(443),
@@ -487,7 +505,7 @@ class MultiTierArchitectureStack(Stack):
 
         # TG health checks.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_IngressFromPrivateEgressAZ1_HTTP",
+            "IngressFromPrivateEgressAZ1_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
             rule_number=140,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -497,7 +515,7 @@ class MultiTierArchitectureStack(Stack):
 
         # TG health checks.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_IngressFromPrivateEgressAZ2_HTTP",
+            "IngressFromPrivateEgressAZ2_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
             rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -507,7 +525,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Ephemeral ports for return traffic.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_IngressFromAnywhere_EphemeralPorts",
+            "IngressFromAnywhere_EphemeralPorts",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
             rule_number=180,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
@@ -521,7 +539,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Outbound response.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_EgressToAnywhere_HTTP",
+            "EgressToAnywhere_HTTP",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
             rule_number=100,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -531,7 +549,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Outbound response.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_EgressToAnywhere_HTTPS",
+            "EgressToAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
             rule_number=120,
             traffic=ec2.AclTraffic.tcp_port(443),
@@ -541,7 +559,7 @@ class MultiTierArchitectureStack(Stack):
 
         # ALB traffic, TG health checks.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_EgressToPrivateEgressAZ1_HTTP",
+            "EgressToPrivateEgressAZ1_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
             rule_number=140,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -551,7 +569,7 @@ class MultiTierArchitectureStack(Stack):
 
         # ALB traffic, TG health checks.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_EgressToPrivateEgressAZ2_HTTP",
+            "EgressToPrivateEgressAZ2_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
             rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -561,7 +579,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Ephemeral ports for outbound responses.
         self.publicAcl.add_entry(
-            "publicSubnetAcl_EgressToAnywhere_EphemeralPorts",
+            "EgressToAnywhere_EphemeralPorts",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
             rule_number=180,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
@@ -576,7 +594,7 @@ class MultiTierArchitectureStack(Stack):
 
         # ALB traffic, TG health checks.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressFromPublicAZ1_HTTP",
+            "IngressFromPublicAZ1_HTTP",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1), 
             rule_number=100,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -586,7 +604,7 @@ class MultiTierArchitectureStack(Stack):
 
         # ALB traffic, TG health checks.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressFromPublicAZ2_HTTP",
+            "IngressFromPublicAZ2_HTTP",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2), 
             rule_number=120,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -596,7 +614,7 @@ class MultiTierArchitectureStack(Stack):
 
         # RDS DB traffic.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressFromPrivateIsoAZ1_MYSQL",
+            "IngressFromPrivateIsoAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), 
             rule_number=140,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -606,7 +624,7 @@ class MultiTierArchitectureStack(Stack):
 
         # RDS DB traffic in case of DR.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressToPrivateIsoAZ2_MYSQL",
+            "IngressToPrivateIsoAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), 
             rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -616,7 +634,7 @@ class MultiTierArchitectureStack(Stack):
 
         # EIC Endpoint HTTPS traffic for AWS API calls.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressFromAnywhere_HTTPS",
+            "IngressFromAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
             rule_number=180,
             traffic=ec2.AclTraffic.tcp_port(443),
@@ -626,7 +644,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Cross AZ SSH traffic for EC2's.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressFromPrivEgressAZ1_SSH",
+            "IngressFromPrivEgressAZ1_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
             rule_number=200,
             traffic=ec2.AclTraffic.tcp_port(22),
@@ -636,7 +654,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Cross AZ SSH traffic for EC2's.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_IngressFromPrivEgressAZ2_SSH",
+            "IngressFromPrivEgressAZ2_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
             rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(22),
@@ -644,9 +662,9 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports ingress, e.g. return traffic, load balancing and application layer protocols communication.
+        # Ephemeral ports ingress, e.g. inbound traffic, load balancing and application layer protocols communication.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EphemeralPortsIngressAZ1",
+            "EphemeralPortsIngressAZ1",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
             rule_number=240,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
@@ -654,11 +672,11 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports ingress, e.g. return traffic, load balancing and application layer protocols communication.
+         # Ephemeral ports ingress, e.g. inbound traffic, load balancing and application layer protocols communication.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EphemeralPortsIngressAZ2",
+            "EphemeralPortsIngressAZ2",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
-            rule_number=240,
+            rule_number=260,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -670,7 +688,7 @@ class MultiTierArchitectureStack(Stack):
 
         # TG health checks.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToPublicAZ1_HTTP",
+            "EgressToPublicAZ1_HTTP",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1), 
             rule_number=100,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -680,7 +698,7 @@ class MultiTierArchitectureStack(Stack):
 
         # TG health checks.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToPublicAZ2_HTTP",
+            "EgressToPublicAZ2_HTTP",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
             rule_number=120,
             traffic=ec2.AclTraffic.tcp_port(80),
@@ -690,7 +708,7 @@ class MultiTierArchitectureStack(Stack):
 
         # RDS DB traffic.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToPrivateIsoAZ1_MYSQL",
+            "EgressToPrivateIsoAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), 
             rule_number=140,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -700,7 +718,7 @@ class MultiTierArchitectureStack(Stack):
 
         # RDS DB traffic in case of DR.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToPrivateIsoAZ2_MYSQL",
+            "EgressToPrivateIsoAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), 
             rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -710,7 +728,7 @@ class MultiTierArchitectureStack(Stack):
 
         # EIC Endpoint HTTPS traffic for AWS API calls.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToAnywhere_HTTPS",
+            "EgressToAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
             rule_number=180,
             traffic=ec2.AclTraffic.tcp_port(443),
@@ -720,7 +738,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Cross AZ SSH traffic for EC2's.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToPrivEgressAZ1_SSH",
+            "EgressToPrivEgressAZ1_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
             rule_number=200,
             traffic=ec2.AclTraffic.tcp_port(22),
@@ -730,7 +748,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Cross AZ SSH traffic for EC2's.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EgressToPrivEgressAZ2_SSH",
+            "EgressToPrivEgressAZ2_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
             rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(22),
@@ -740,7 +758,7 @@ class MultiTierArchitectureStack(Stack):
 
         # Ephemeral ports egress, e.g. return traffic, load balancing and application layer protocols communication.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EphemeralPortsEgressAZ1",
+            "EphemeralPortsEgressAZ1",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
             rule_number=240,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
@@ -750,21 +768,21 @@ class MultiTierArchitectureStack(Stack):
 
         # Ephemeral ports egress, e.g. return traffic, load balancing and application layer protocols communication.
         self.privEgressAcl.add_entry(
-            "privateEgressSubnetAcl_EphemeralPortsEgressAZ2",
+            "EphemeralPortsEgressAZ2",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
-            rule_number=240,
+            rule_number=260,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
         )
-
+       
 
         # PRIVATE ISOLATED SUBNET ACL
         # Ingress Rules
 
         # DB traffic.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_IngressFromPrivEgressAZ1_MYSQL",
+            "IngressFromPrivEgressAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
             rule_number=100,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -774,7 +792,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_IngressFromPrivEgressAZ2_MYSQL",
+            "IngressFromPrivEgressAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
             rule_number=120,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -784,7 +802,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic in case of DR.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_IngressFromPrivIsolatedAZ1_MYSQL",
+            "IngressFromPrivIsolatedAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), 
             rule_number=140,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -794,7 +812,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic in case of DR.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_IngressFromPrivIsolatedAZ2_MYSQL",
+            "IngressFromPrivIsolatedAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), 
             rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -807,7 +825,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_EgressToPrivEgressAZ1_MYSQL",
+            "EgressToPrivEgressAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1),
             rule_number=100,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -817,7 +835,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_EgressToPrivEgressAZ2_MYSQL",
+            "EgressToPrivEgressAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2),
             rule_number=120,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -827,7 +845,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic in case of DR.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_EgressToPrivIsolatedAZ1_MYSQL",
+            "EgressToPrivIsolatedAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), 
             rule_number=140,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -837,7 +855,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DB traffic in case of DR.
         self.PrivIsoAcl.add_entry(
-            "privateIsolatedSubnetAcl_EgressToPrivIsolatedAZ2_MYSQL",
+            "EgressToPrivIsolatedAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), 
             rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(3306),
@@ -850,12 +868,20 @@ class MultiTierArchitectureStack(Stack):
         ### SECURITY GROUP RULES ###
 
         # Application Load Balancer Ingress rules.
-        # Ingress rule for HTTPS requests.
+        # Ingress rule for HTTP.
+        self.SG_ALB.add_ingress_rule(
+            peer=ec2.Peer.ipv4("0.0.0.0/0"),
+            connection=ec2.Port.tcp(80),
+            description="iInbound HTTP traffic from anywhere.",
+        )
+
+        # Ingress rule for HTTPS.
         self.SG_ALB.add_ingress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(443),
-            description="Allow inbound HTTPS traffic from anywhere.",
+            description="Inbound HTTPS traffic from anywhere.",
         )
+
         # Ingress rule from SG_AppInstances.
         self.SG_ALB.add_ingress_rule(
             peer=self.SG_AppInstances,
@@ -971,4 +997,7 @@ class MultiTierArchitectureStack(Stack):
             description="Allow outbound SSH traffic to SG_AppInstances",
         )
 
+        
+
+        
         

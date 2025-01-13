@@ -4,7 +4,7 @@
 sudo dnf update -y
 
 # Install mysql client from MariaDB.
-sudo dnf install mariadb105
+sudo dnf install -y mariadb105
 
 # Install stress to test auto scaling.
 sudo dnf install -y stress

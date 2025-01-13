@@ -84,11 +84,11 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
 ## The AWS services:
 
-   ### 1. Attach ACL's with the appropriate subnets and create the appropriate rules needed.  
+   ### 1. Attach ACL's to the appropriate subnets and create the appropriate rules needed.  
    **Purpose:** 
    - I have created one ACL for similar subnets in both AZ's, this reduces complexity and maintenance overhead and matches my architectures defence layers as intended.    
    - Also is there less chance of misconfiguration when updating rules.    
-   - Ephemeral ports (1024-65535) rules added to cover the different types of clients that might initiate traffic to public-facing instances. I.e:  
+   - Ephemeral ports (1024-65535) rules added to cover the different types of clients that might initiate traffic to public-facing instances. E.g.:  
      - Requests originating from Elastic Load Balancing use ports 1024-65535.   
      - A NAT gateway uses ports 1024-65535.  
    
@@ -97,6 +97,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
  
    ### 2. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
+
    **Purpose:**  
     A security group acts as firewall on the instance level. By default all outbound traffic is allowed but i've restricted   
     this feature for more fine grained control of the data traffic. 
@@ -115,11 +116,23 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    Correct way: with open() ; user_data = f.read() ; self.user_data = ec2.UserData.for_linux().custom(user_data).   
 
    ### 4. Create an Application Load Balancer and attach it to the Public Subnets in both AZ's.  
-   **Note:**   
-   In case of an unhealthy target: check SG config or EC2 user data input.  
+     
+   
 
    ### 4a. Create a Target Group.
    A target group is used to route requests to one or more registered targets.
+   
+   **Note:** 
+   In case of an unhealthy target: check SG config or EC2 user data input.  
+   Also, make sure the health checks are not too slow, like i did!!  
+   (It took ages for my targets to become healthty, which will cause a lot of confusion!!)  
+   - interval= I had this prop set to 30 seconds instead of the default 10s.   
+   - You can also set the default healthy_threshold_count lower than 5 if your application is    
+   stable and starts up reliably.  
+
+   The key is balancing between:
+   - Fast deployment/scaling (lower threshold)  
+   - System stability (higher threshold)  
 
    ### 4b. Create a HTTPS Listener.
    **purpose:**  
@@ -147,7 +160,9 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    The AutoScaling construct library will create the required CloudWatch alarms and AutoScaling policies.  
 
    ### 6. Create a RDS db in DatabaseSubnet1.  
-    Note: When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances  
+   **Note:**   
+    When you enable the Multi-AZ property, RDS automatically selects appropriate AZ's for the primary and standby instances.  
+    Also, the database security group applies automatically to both the primary and standby DB instances.  
 
    **Purpose:**  
    - DB created in private isolated subnet, reachable only from EC2 web server in another private subnet.
