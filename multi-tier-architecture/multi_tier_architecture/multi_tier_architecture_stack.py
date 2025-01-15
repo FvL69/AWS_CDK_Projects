@@ -751,11 +751,31 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports for DB client connections AZ1.
+        self.privEgressAcl.add_entry(
+            "IngressFromPrivateIsoAZ1_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1),
+            rule_number=180,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports for DB client connections AZ2.
+        self.privEgressAcl.add_entry(
+            "IngressFromPrivateIsoAZ2_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2),
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )   
+
         # EIC Endpoint HTTPS traffic for AWS API calls.
         self.privEgressAcl.add_entry(
             "IngressFromAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
-            rule_number=180,
+            rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(443),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -765,7 +785,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "IngressFromAnywhere_SSH",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-            rule_number=200,
+            rule_number=240,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -775,7 +795,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "IngressEphemeral",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-            rule_number=210,
+            rule_number=260,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -785,7 +805,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "IngressFromPrivEgressAZ1_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
-            rule_number=220,
+            rule_number=280,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -795,7 +815,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "IngressFromPrivEgressAZ2_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
-            rule_number=240,
+            rule_number=300,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -805,7 +825,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EphemeralPortsIngressAZ1",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
-            rule_number=260,
+            rule_number=320,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -815,7 +835,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EphemeralPortsIngressAZ2",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
-            rule_number=280,
+            rule_number=340,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -905,11 +925,31 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports for DB client connections AZ1.
+        self.privEgressAcl.add_entry(
+            "EgressToPrivateIsoAZ1_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1),
+            rule_number=180,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports for DB client connections AZ2.
+        self.privEgressAcl.add_entry(
+            "EgressToPrivateIsoAZ2_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2),
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
         # EIC Endpoint HTTPS traffic for AWS API calls.
         self.privEgressAcl.add_entry(
             "EgressToAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
-            rule_number=180,
+            rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(443),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -919,7 +959,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EgressToAnywhere_SSH",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-            rule_number=200,
+            rule_number=240,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -929,7 +969,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EgressEphemeral",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-            rule_number=210,
+            rule_number=260,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -939,7 +979,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EgressToPrivEgressAZ1_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
-            rule_number=220,
+            rule_number=280,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -949,7 +989,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EgressToPrivEgressAZ2_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
-            rule_number=240,
+            rule_number=300,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -959,7 +999,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EphemeralPortsEgressAZ1",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
-            rule_number=260,
+            rule_number=320,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -969,7 +1009,7 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EphemeralPortsEgressAZ2",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
-            rule_number=280,
+            rule_number=340,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -999,11 +1039,31 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports for DB client connections AZ1.
+        self.PrivIsoAcl.add_entry(
+            "IngressFromPrivEgressAZ1_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1),
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports for DB client connections AZ2.
+        self.PrivIsoAcl.add_entry(
+            "IngressFromPrivEgressAZ2_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2),
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )   
+
         # DB traffic in case of DR.
         self.PrivIsoAcl.add_entry(
             "IngressFromPrivIsolatedAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), 
-            rule_number=140,
+            rule_number=180,
             traffic=ec2.AclTraffic.tcp_port(3306),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -1013,7 +1073,7 @@ class MultiTierArchitectureStack(Stack):
         self.PrivIsoAcl.add_entry(
             "IngressFromPrivIsolatedAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), 
-            rule_number=160,
+            rule_number=200,
             traffic=ec2.AclTraffic.tcp_port(3306),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -1042,11 +1102,31 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports for DB client connections AZ1.
+        self.PrivIsoAcl.add_entry(
+            "EgressToPrivEgressAZ1_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1),
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral ports for DB client connections AZ2.
+        self.PrivIsoAcl.add_entry(
+            "EgressToPrivEgressAZ2_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2),
+            rule_number=160,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
         # DB traffic in case of DR.
         self.PrivIsoAcl.add_entry(
             "EgressToPrivIsolatedAZ1_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ1), 
-            rule_number=140,
+            rule_number=180,
             traffic=ec2.AclTraffic.tcp_port(3306),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -1056,7 +1136,7 @@ class MultiTierArchitectureStack(Stack):
         self.PrivIsoAcl.add_entry(
             "EgressToPrivIsolatedAZ2_MYSQL",
             cidr=ec2.AclCidr.ipv4(PRIVATE_ISOLATED_AZ2), 
-            rule_number=160,
+            rule_number=200,
             traffic=ec2.AclTraffic.tcp_port(3306),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
