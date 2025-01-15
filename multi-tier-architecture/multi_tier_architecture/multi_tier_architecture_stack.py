@@ -673,7 +673,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Ingress Rules TCP AZ1.
         self.privEgressAcl.add_entry(
-            "IngressDNS_TCP_AZ1",
+            "IngressDNS_TCP_AZ1_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
             rule_number=20,
             traffic=ec2.AclTraffic.tcp_port(53),
@@ -683,7 +683,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Ingress Rules UDP AZ1.
         self.privEgressAcl.add_entry(
-            "IngressDNS_UDP_AZ1",
+            "IngressDNS_UDP_AZ1_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
             rule_number=40,
             traffic=ec2.AclTraffic.udp_port(53),
@@ -693,7 +693,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Ingress Rules TCP AZ2.
         self.privEgressAcl.add_entry(
-            "IngressDNS_TCP_AZ2",
+            "IngressDNS_TCP_AZ2_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
             rule_number=60,
             traffic=ec2.AclTraffic.tcp_port(53),
@@ -703,7 +703,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Ingress Rules UDP AZ2.
         self.privEgressAcl.add_entry(
-            "IngressDNS_UDP_AZ2",
+            "IngressDNS_UDP_AZ2_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
             rule_number=80,
             traffic=ec2.AclTraffic.udp_port(53),
@@ -847,7 +847,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Egress Rules TCP AZ1.
         self.privEgressAcl.add_entry(
-            "EgressDNS_TCP_AZ1",
+            "EgressDNS_TCP_AZ1_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
             rule_number=20,
             traffic=ec2.AclTraffic.tcp_port(53),
@@ -857,7 +857,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Egress Rules UDP AZ1.
         self.privEgressAcl.add_entry(
-            "EgressDNS_UDP_AZ1",
+            "EgressDNS_UDP_AZ1_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
             rule_number=40,
             traffic=ec2.AclTraffic.udp_port(53),
@@ -867,7 +867,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Egress Rules TCP AZ2.
         self.privEgressAcl.add_entry(
-            "EgressDNS_TCP_AZ2",
+            "EgressDNS_TCP_AZ2_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
             rule_number=60,
             traffic=ec2.AclTraffic.tcp_port(53),
@@ -877,7 +877,7 @@ class MultiTierArchitectureStack(Stack):
 
         # DNS Egress Rules UDP AZ2.
         self.privEgressAcl.add_entry(
-            "EgressDNS_UDP_AZ2",
+            "EgressDNS_UDP_AZ2_DNS",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
             rule_number=80,
             traffic=ec2.AclTraffic.udp_port(53),
@@ -1179,6 +1179,13 @@ class MultiTierArchitectureStack(Stack):
 
 
         # AppInstances ingress rules.
+        # Ingress rules for SSH between instances
+        self.SG_AppInstances.add_ingress_rule(
+            peer=self.SG_AppInstances,
+            connection=ec2.Port.tcp(22),
+            description="Inbound SSH between app instances"
+        )
+
         # Ingress rule from EIC Endpoint.
         self.SG_AppInstances.add_ingress_rule(
             peer=self.SG_EIC_Endpoint,
@@ -1198,7 +1205,15 @@ class MultiTierArchitectureStack(Stack):
             description="Inbound MySQL traffic from SG_RDSdb",
         )
 
+
         # AppInstances Egress rules.
+        # Egress rules for SSH between instances
+        self.SG_AppInstances.add_egress_rule(
+            peer=self.SG_AppInstances,
+            connection=ec2.Port.tcp(22),
+            description="Outbound SSH between app instances"
+        )
+
         # Egress rule to EIC Endpoint.
         self.SG_AppInstances.add_egress_rule(
             peer=self.SG_EIC_Endpoint,
