@@ -378,10 +378,10 @@ class MultiTierArchitectureStack(Stack):
                 port="80",
                 protocol=elbv2.Protocol.HTTP,
                 healthy_http_codes="200-299",
-                healthy_threshold_count=2, 
+                healthy_threshold_count=5, 
                 unhealthy_threshold_count=2, 
-                timeout=Duration.seconds(5),  
-                interval=Duration.seconds(10),  
+                timeout=Duration.seconds(6),  
+                interval=Duration.seconds(30),  
                 path="/",                      
             ),
         )
@@ -483,7 +483,27 @@ class MultiTierArchitectureStack(Stack):
         # PUBLIC SUBNET ACL
         # Ingress Rules
 
-        # Incomming requests.
+        # Public Subnet DNS Ingress TCP.
+        self.publicAcl.add_entry(
+            "IngressDNS_TCP",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=60,
+            traffic=ec2.AclTraffic.tcp_port(53),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+         # Public Subnet DNS Ingress UDP.
+        self.publicAcl.add_entry(
+            "IngressDNS_UDP",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=80,
+            traffic=ec2.AclTraffic.udp_port(53),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Inbound HTTP traffic.
         self.publicAcl.add_entry(
             "IngressFromAnywhere_HTTP",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
@@ -493,7 +513,7 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Incomming requests.
+        # Inbound HTTPS traffic.
         self.publicAcl.add_entry(
             "IngressFromAnywhere_HTTPS",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"), 
@@ -503,11 +523,21 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports for return traffic.
+        self.publicAcl.add_entry(
+            "IngressFromAnywhere_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
         # TG health checks.
         self.publicAcl.add_entry(
             "IngressFromPrivateEgressAZ1_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
-            rule_number=140,
+            rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(80),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -517,17 +547,27 @@ class MultiTierArchitectureStack(Stack):
         self.publicAcl.add_entry(
             "IngressFromPrivateEgressAZ2_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
-            rule_number=160,
+            rule_number=180,
             traffic=ec2.AclTraffic.tcp_port(80),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports for return traffic.
+        # Ephemeral port range for ingress traffic.
         self.publicAcl.add_entry(
-            "IngressFromAnywhere_EphemeralPorts",
-            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-            rule_number=180,
+            "IngressFromPrivateEgressAZ1_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1),
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Ephemeral port range for ingress traffic.
+        self.publicAcl.add_entry(
+            "IngressFromPrivateEgressAZ2_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2),
+            rule_number=220,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -536,6 +576,26 @@ class MultiTierArchitectureStack(Stack):
 
         # PUBLIC SUBNET ACL
         # Egress Rules
+
+        # Public Subnet DNS Egress TCP.
+        self.publicAcl.add_entry(
+            "EgressDNS_TCP",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=60,
+            traffic=ec2.AclTraffic.tcp_port(53),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Public Subnet DNS Egress UDP.
+        self.publicAcl.add_entry(
+            "EgressDNS_UDP",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=80,
+            traffic=ec2.AclTraffic.udp_port(53),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
 
         # Outbound response.
         self.publicAcl.add_entry(
@@ -557,11 +617,21 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        # Ephemeral ports for outbound responses.
+        self.publicAcl.add_entry(
+            "EgressToAnywhere_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=140,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
         # ALB traffic, TG health checks.
         self.publicAcl.add_entry(
             "EgressToPrivateEgressAZ1_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
-            rule_number=140,
+            rule_number=160,
             traffic=ec2.AclTraffic.tcp_port(80),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -571,26 +641,75 @@ class MultiTierArchitectureStack(Stack):
         self.publicAcl.add_entry(
             "EgressToPrivateEgressAZ2_HTTP",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
-            rule_number=160,
+            rule_number=180,
             traffic=ec2.AclTraffic.tcp_port(80),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports for outbound responses.
+        # Ephemeral port range for egress traffic.
         self.publicAcl.add_entry(
-            "EgressToAnywhere_EphemeralPorts",
-            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-            rule_number=180,
+            "EgressToPrivateEgressAZ1_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1),
+            rule_number=200,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
         )
-        
+
+        # Ephemeral port range for egress traffic.
+        self.publicAcl.add_entry(
+            "EgressToPrivateEgressAZ2_EphemeralPorts",
+            cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2),
+            rule_number=220,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
 
 
         # PRIVATE with EGRESS SUBNET ACL
         # Ingress Rules
+
+        # DNS Ingress Rules TCP AZ1.
+        self.privEgressAcl.add_entry(
+            "IngressDNS_TCP_AZ1",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
+            rule_number=20,
+            traffic=ec2.AclTraffic.tcp_port(53),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # DNS Ingress Rules UDP AZ1.
+        self.privEgressAcl.add_entry(
+            "IngressDNS_UDP_AZ1",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
+            rule_number=40,
+            traffic=ec2.AclTraffic.udp_port(53),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # DNS Ingress Rules TCP AZ2.
+        self.privEgressAcl.add_entry(
+            "IngressDNS_TCP_AZ2",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
+            rule_number=60,
+            traffic=ec2.AclTraffic.tcp_port(53),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # DNS Ingress Rules UDP AZ2.
+        self.privEgressAcl.add_entry(
+            "IngressDNS_UDP_AZ2",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
+            rule_number=80,
+            traffic=ec2.AclTraffic.udp_port(53),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
 
         # ALB traffic, TG health checks.
         self.privEgressAcl.add_entry(
@@ -642,11 +761,31 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        #  Inbound SSH traffic from internet to EIC endpoint.
+        self.privEgressAcl.add_entry(
+            "IngressFromAnywhere_SSH",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Return traffic for SSH, HTTP and HTTPS. (ephemeral ports)
+        self.privEgressAcl.add_entry(
+            "IngressEphemeral",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=210,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.INGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
         # Cross AZ SSH traffic for EC2's.
         self.privEgressAcl.add_entry(
             "IngressFromPrivEgressAZ1_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
-            rule_number=200,
+            rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -656,27 +795,27 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "IngressFromPrivEgressAZ2_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
-            rule_number=220,
+            rule_number=240,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports ingress, e.g. inbound traffic, load balancing and application layer protocols communication.
+        # Ephemeral port range for ingress traffic.
         self.privEgressAcl.add_entry(
             "EphemeralPortsIngressAZ1",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
-            rule_number=240,
+            rule_number=260,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
         )
 
-         # Ephemeral ports ingress, e.g. inbound traffic, load balancing and application layer protocols communication.
+         # Ephemeral port range for ingress traffic.
         self.privEgressAcl.add_entry(
             "EphemeralPortsIngressAZ2",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
-            rule_number=260,
+            rule_number=280,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.INGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -685,6 +824,46 @@ class MultiTierArchitectureStack(Stack):
 
         # PRIVATE with EGRESS SUBNET ACL
         # Egress Rules
+
+        # DNS Egress Rules TCP AZ1.
+        self.privEgressAcl.add_entry(
+            "EgressDNS_TCP_AZ1",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
+            rule_number=20,
+            traffic=ec2.AclTraffic.tcp_port(53),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # DNS Egress Rules UDP AZ1.
+        self.privEgressAcl.add_entry(
+            "EgressDNS_UDP_AZ1",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
+            rule_number=40,
+            traffic=ec2.AclTraffic.udp_port(53),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # DNS Egress Rules TCP AZ2.
+        self.privEgressAcl.add_entry(
+            "EgressDNS_TCP_AZ2",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
+            rule_number=60,
+            traffic=ec2.AclTraffic.tcp_port(53),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # DNS Egress Rules UDP AZ2.
+        self.privEgressAcl.add_entry(
+            "EgressDNS_UDP_AZ2",
+            cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
+            rule_number=80,
+            traffic=ec2.AclTraffic.udp_port(53),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
 
         # TG health checks.
         self.privEgressAcl.add_entry(
@@ -736,11 +915,31 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
+        #  Outbound SSH traffic from EIC endpoint to internet.
+        self.privEgressAcl.add_entry(
+            "EgressToAnywhere_SSH",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=200,
+            traffic=ec2.AclTraffic.tcp_port(22),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
+        # Return traffic for SSH, HTTP and HTTPS. (ephemeral ports)
+        self.privEgressAcl.add_entry(
+            "EgressEphemeral",
+            cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
+            rule_number=210,
+            traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
+            direction=ec2.TrafficDirection.EGRESS,
+            rule_action=ec2.Action.ALLOW,
+        )
+
         # Cross AZ SSH traffic for EC2's.
         self.privEgressAcl.add_entry(
             "EgressToPrivEgressAZ1_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ1), 
-            rule_number=200,
+            rule_number=220,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -750,27 +949,27 @@ class MultiTierArchitectureStack(Stack):
         self.privEgressAcl.add_entry(
             "EgressToPrivEgressAZ2_SSH",
             cidr=ec2.AclCidr.ipv4(PRIVATE_EGRESS_AZ2), 
-            rule_number=220,
+            rule_number=240,
             traffic=ec2.AclTraffic.tcp_port(22),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports egress, e.g. return traffic, load balancing and application layer protocols communication.
+        # Ephemeral port range for egress traffic.
         self.privEgressAcl.add_entry(
             "EphemeralPortsEgressAZ1",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ1),
-            rule_number=240,
+            rule_number=260,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Ephemeral ports egress, e.g. return traffic, load balancing and application layer protocols communication.
+        # Ephemeral port range for egress traffic.
         self.privEgressAcl.add_entry(
             "EphemeralPortsEgressAZ2",
             cidr=ec2.AclCidr.ipv4(PUBLIC_AZ2),
-            rule_number=260,
+            rule_number=280,
             traffic=ec2.AclTraffic.tcp_port_range(1024, 65535),
             direction=ec2.TrafficDirection.EGRESS,
             rule_action=ec2.Action.ALLOW,
@@ -872,7 +1071,7 @@ class MultiTierArchitectureStack(Stack):
         self.SG_ALB.add_ingress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(80),
-            description="iInbound HTTP traffic from anywhere.",
+            description="Inbound HTTP traffic from anywhere.",
         )
 
         # Ingress rule for HTTPS.
@@ -886,15 +1085,16 @@ class MultiTierArchitectureStack(Stack):
         self.SG_ALB.add_ingress_rule(
             peer=self.SG_AppInstances,
             connection=ec2.Port.tcp(80),
-            description="Allow inbound HTTP traffic from SG_AppInstances"
+            description="Inbound HTTP traffic from SG_AppInstances"
         )
+
 
         # Application Load Balancer Egress rules.
         # Egress rule to SG_AppInstances.
         self.SG_ALB.add_egress_rule(
             peer=self.SG_AppInstances,
             connection=ec2.Port.tcp(80),
-            description="Allow outbound HTTP traffic to SG_AppInstances",
+            description="Outbound HTTP traffic to SG_AppInstances",
         )
 
 
@@ -903,19 +1103,19 @@ class MultiTierArchitectureStack(Stack):
         self.SG_AppInstances.add_ingress_rule(
             peer=self.SG_EIC_Endpoint,
             connection=ec2.Port.tcp(22),
-            description="Allow inbound SSH traffic from EIC_Endpoint",
+            description="Inbound SSH traffic from EIC_Endpoint",
         )
         # Ingress rule from ALB.
         self.SG_AppInstances.add_ingress_rule(
             peer=self.SG_ALB,
             connection=ec2.Port.tcp(80),
-            description="Allow inbound HTTP traffic from SG_ALB",
+            description="Inbound HTTP traffic from SG_ALB",
         )
         # Ingress rule from RDSdb.
         self.SG_AppInstances.add_ingress_rule(
             peer=self.SG_RDSdb,
             connection=ec2.Port.tcp(3306),
-            description="Allow inbound MySQL traffic from SG_RDSdb",
+            description="Inbound MySQL traffic from SG_RDSdb",
         )
 
         # AppInstances Egress rules.
@@ -923,31 +1123,31 @@ class MultiTierArchitectureStack(Stack):
         self.SG_AppInstances.add_egress_rule(
             peer=self.SG_EIC_Endpoint,
             connection=ec2.Port.tcp(22),
-            description="Allow outbound SSH traffic to EIC_Endpoint",
+            description="Outbound SSH traffic to EIC_Endpoint",
         )
         # Egress rule to SG_ALB.
         self.SG_AppInstances.add_egress_rule(
             peer=self.SG_ALB,
             connection=ec2.Port.tcp(80),
-            description="Allow outbound HTTP traffic to SG_ALB",
+            description="Outbound HTTP traffic to SG_ALB",
         )
         # Egress rule to SG_RDSdb.
         self.SG_AppInstances.add_egress_rule(
             peer=self.SG_RDSdb,
             connection=ec2.Port.tcp(3306),
-            description="Allow outbound MySQL traffic to SG_RDSdb",
+            description="Outbound MySQL traffic to SG_RDSdb",
         )
         # Egress rule to anywhere on port 80.
         self.SG_AppInstances.add_egress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(80),
-            description="Allow outbound HTTP traffic through NatGateway",
+            description="Outbound HTTP traffic through NatGateway",
         )
         # Egress rule to anywhere on port 443.
         self.SG_AppInstances.add_egress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(443),
-            description="Allow outbound HTTPS traffic through NatGateway",
+            description="Outbound HTTPS traffic through NatGateway",
         )
 
 
@@ -973,13 +1173,13 @@ class MultiTierArchitectureStack(Stack):
         self.SG_EIC_Endpoint.add_ingress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(443),
-            description="Allow inbound HTTPS traffic for AWS API calls"
+            description="Inbound HTTPS traffic for AWS API calls"
         )
         # Ingress rule from SG_AppInstances.
         self.SG_EIC_Endpoint.add_ingress_rule(
             peer=self.SG_AppInstances,
             connection=ec2.Port.tcp(22),
-            description="Allow inbound SSH traffic from SG_AppInstances",
+            description="Inbound SSH traffic from SG_AppInstances",
         )
                 
         
@@ -988,13 +1188,13 @@ class MultiTierArchitectureStack(Stack):
         self.SG_EIC_Endpoint.add_egress_rule(
             peer=ec2.Peer.ipv4("0.0.0.0/0"),
             connection=ec2.Port.tcp(443),
-            description="Allow outbound HTTPS traffic for AWS API calls"
+            description="Outbound HTTPS traffic for AWS API calls"
         )
         # Egress rule to SG_AppInstances.
         self.SG_EIC_Endpoint.add_egress_rule(
             peer=self.SG_AppInstances,
             connection=ec2.Port.tcp(22),
-            description="Allow outbound SSH traffic to SG_AppInstances",
+            description="Outbound SSH traffic to SG_AppInstances",
         )
 
         
