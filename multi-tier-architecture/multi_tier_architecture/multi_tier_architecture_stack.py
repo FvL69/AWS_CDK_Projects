@@ -771,7 +771,7 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Return traffic for SSH, HTTP and HTTPS. (ephemeral ports)
+        # Return traffic for SSH and HTTPS. (ephemeral ports)
         self.privEgressAcl.add_entry(
             "IngressEphemeral",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
@@ -925,7 +925,7 @@ class MultiTierArchitectureStack(Stack):
             rule_action=ec2.Action.ALLOW,
         )
 
-        # Return traffic for SSH, HTTP and HTTPS. (ephemeral ports)
+        # Return traffic for SSH and HTTPS. (ephemeral ports)
         self.privEgressAcl.add_entry(
             "EgressEphemeral",
             cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
