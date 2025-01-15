@@ -86,14 +86,13 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
    ### 1. Attach ACL's to the appropriate subnets and create the appropriate rules needed.  
    **Purpose:** 
-   - I have created one ACL for similar subnets in both AZ's, this reduces complexity and maintenance overhead and matches my architectures defence layers as intended.    
+   - I created one ACL for similar subnets in both AZ's, this reduces complexity and maintenance overhead and matches my architectures defence layers as intended.    
    - Also is there less chance of misconfiguration when updating rules.    
-   - Ephemeral ports (1024-65535) rules added to cover the different types of clients that might initiate traffic to public-facing instances. E.g.:  
-     - Requests originating from Elastic Load Balancing use ports 1024-65535.   
-     - A NAT gateway uses ports 1024-65535.  
+   - Ephemeral ports (1024-65535) rules added between all subnets for responses to handle multiple client requests at the same time.  
+   - DNS port rules between all subnets, it solved the unhealthy targets problem after i implemented the NACL's. Pointed out by Amazon Q.
    
    **Difficulties:**  
-   - Making sure that all services can communicate as intended and blocking everything that's not wanted. Every ingress rule has an egress counter part due to the stateless nature of the network ACL.
+   - Making sure that all services can communicate as intended. Every ingress rule has an egress counter part due to the stateless nature of the network ACL.
 
  
    ### 2. Associate Security Groups with the EC2 launch template, RDSdb, ALB and EIC_Endpoint.
@@ -179,19 +178,19 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
  This is a L1 construct, a low lvl construct which uses a Cfn (Cloudformation) naming convention.  
 
  **Purpose:**  
- Intended specifically for management traffic use cases. The Service establishes a private tunnel from your computer to the endpoint   
+ Intended specifically for secure management traffic use cases. The Service establishes a private tunnel from your computer to the endpoint   
  using the credentials for your IAM entity. Traffic is authenticated and authorized before it reaches your VPC.  
 
  **Difficulties:**  
- It was a bit of a search to figure out the correct parameter syntax for the EIC attributes and IAM policy.   
+ It was a bit of a search to figure out the correct property syntax for the EIC attributes and IAM policy.   
  For advice and quick search i use Amazone Q, e.g. i didn't know which endpoint to use for connecting with EC2 without a public IP.    
     
     EIC_Endpoint benefits:  
-        - Allows access to private instances which have no public IP.  
-        - It leverages IAM for access control. (provides fine-grained permissions management)  
-        - It eliminates the need to manage SSH keys for each instance.  
-        - Connection attempts are logged in AWS CloudTrail. (auditing purposes)  
-        - No additional costs but for cross AZ data transfer, see link DataTransferCosts below.
+        - No need for bastion hosts  
+        - No need to manage SSH keys  
+        - No public IP addresses required on your instances  
+        - IAM-controlled access  
+        - Full SSH functionality including system updates  
 
 **Links to service documentation:**   
    [EC2InstanceConnect_Endpoint](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-with-ec2-instance-connect-endpoint.html)  
@@ -201,4 +200,22 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    ### 6a. Create IAM Policy for EIC Endpoint.
 
 ## 3. Configure: SG rules, ACL rules and routing.
+
+    **A word from Amazon Q:**  
+    Your success is a result of your careful implementation and willingness to test and verify each component. You've built a secure,   
+    well-architected multi-tier infrastructure that follows AWS best practices with:  
+
+    - Proper network segmentation using public, private, and isolated subnets  
+    - Secure remote access using EC2 Instance Connect Endpoint  
+    - Well-configured security groups and network ACLs  
+    - Protected database access in isolated subnets  
+    - Working cross-AZ connectivity  
+
+    Your thorough testing and sharing of results has also been valuable - it helped clarify how EIC Endpoint actually handles connections in practice,   
+    which is knowledge that benefits everyone.  
+
+    The infrastructure you've built provides a solid foundation that you can build upon for your applications while maintaining security and reliability.   
+    Great work on getting everything working as designed!  
+
+
 

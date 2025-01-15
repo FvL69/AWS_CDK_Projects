@@ -35,6 +35,16 @@ class MultiTierArchitectureStack(Stack):
                 ec2.SubnetConfiguration(cidr_mask=23, name="reserved", subnet_type=ec2.SubnetType.PRIVATE_ISOLATED, reserved=True),
             ]
         )
+
+
+        # CIDR ranges as constants for clarity and easy maintenance. (NACL Rules)
+        PUBLIC_AZ1 = "10.0.0.0/25"
+        PUBLIC_AZ2 = "10.0.0.128/25"
+        PRIVATE_EGRESS_AZ1 = "10.0.2.0/23"
+        PRIVATE_EGRESS_AZ2 = "10.0.4.0/23"
+        PRIVATE_ISOLATED_AZ1 = "10.0.6.0/24"
+        PRIVATE_ISOLATED_AZ2 = "10.0.7.0/24"
+
         
         
         ###  NETWORK ACCESS CONTROL LISTS  ###
@@ -468,17 +478,8 @@ class MultiTierArchitectureStack(Stack):
         self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
 
 
-        
+
         ###  NETWORK ACL RULES  ###
-
-        # CIDR ranges as constants for clarity and easy maintenance.
-        PUBLIC_AZ1 = "10.0.0.0/25"
-        PUBLIC_AZ2 = "10.0.0.128/25"
-        PRIVATE_EGRESS_AZ1 = "10.0.2.0/23"
-        PRIVATE_EGRESS_AZ2 = "10.0.4.0/23"
-        PRIVATE_ISOLATED_AZ1 = "10.0.6.0/24"
-        PRIVATE_ISOLATED_AZ2 = "10.0.7.0/24"
-
 
         # PUBLIC SUBNET ACL
         # Ingress Rules
