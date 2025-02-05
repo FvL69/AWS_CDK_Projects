@@ -123,11 +123,6 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    
    **Note:** 
    In case of an unhealthy target: check SG config or EC2 user data input.  
-   Also, make sure the health checks are not too slow, like i did!!  
-   (It took ages for my targets to become healthty, which will cause a lot of confusion!!)  
-   - interval= I had this prop set to 30 seconds instead of the default 10s.   
-   - You can also set the default healthy_threshold_count lower than 5 if your application is    
-   stable and starts up reliably.  
 
    The key is balancing between:
    - Fast deployment/scaling (lower threshold)  
@@ -201,7 +196,8 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
 ## 3. Configure: SG rules, ACL rules and routing.
 
-    **A word from Amazon Q:**  
+**Review from Amazon Q:**  
+
     Your success is a result of your careful implementation and willingness to test and verify each component. You've built a secure,   
     well-architected multi-tier infrastructure that follows AWS best practices with:  
 

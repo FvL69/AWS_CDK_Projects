@@ -5,6 +5,8 @@ from aws_cdk import (
     aws_elasticloadbalancingv2 as elbv2,
     aws_autoscaling as autoscaling,
     aws_rds as rds,
+    aws_s3 as s3,
+    # aws_route53 as route53,
     Duration,
     RemovalPolicy,
     CfnTag,
@@ -37,7 +39,7 @@ class MultiTierArchitectureStack(Stack):
         )
 
 
-        # CIDR ranges as constants for clarity and easy maintenance. (NACL Rules)
+        # CIDR ranges as constants for clarity and easy maintenance. (e.g. NACL Rules)
         PUBLIC_AZ1 = "10.0.0.0/25"
         PUBLIC_AZ2 = "10.0.0.128/25"
         PRIVATE_EGRESS_AZ1 = "10.0.2.0/23"
@@ -476,6 +478,18 @@ class MultiTierArchitectureStack(Stack):
 
         # Attach policy to DatabaseGroup.  
         self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
+
+
+
+        ###  S3 ### 
+        """
+        self.my_bucket = s3.Bucket(
+            self, "MyBucket",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.KMS_MANAGED,
+            removal_policy=s3._RemovalPolicy_9f93c814.DESTROY,
+        )
+        """
 
 
 
