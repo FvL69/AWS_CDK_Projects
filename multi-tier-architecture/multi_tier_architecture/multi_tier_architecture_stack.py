@@ -5,7 +5,7 @@ from aws_cdk import (
     aws_elasticloadbalancingv2 as elbv2,
     aws_autoscaling as autoscaling,
     aws_rds as rds,
-    aws_s3 as s3,
+    # aws_s3 as s3,
     # aws_route53 as route53,
     Duration,
     RemovalPolicy,
