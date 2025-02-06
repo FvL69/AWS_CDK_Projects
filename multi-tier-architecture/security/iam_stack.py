@@ -66,7 +66,7 @@ class IamStack(NestedStack):
                 sid="EC2InstanceConnect",
                 actions=["ec2-instance-connect:openTunnel"],
                 effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:ec2:{self.region}:{self.account}:instance-connect-endpoint/{self.EIC_Endpoint.attr_id}"],
+                resources=[f"arn:aws:ec2:{self.region}:{self.account}:instance-connect-endpoint/{FromMainStack.EIC_Endpoint.attr_id}"],
                 conditions={
                     "NumericEquals": {
                         "ec2-instance-connect:remotePort": 22,
@@ -172,5 +172,46 @@ class IamStack(NestedStack):
 
         # Attach policy to AdminGroup.
         self.launchTemplatePolicy.attach_to_group(self.AdminGroup)
+
+
+
+        ###  IAM DATABASE POLICY  ###
+
+        # IAM policy 'ReadOnlyAccess' for DatabaseGroup.
+        self.RDSReadOnlyPolicy = iam.Policy(
+            self, "RDSReadOnlyPolicy",
+            statements=[
+                iam.PolicyStatement(
+                    sid="AllowConnect",
+                    actions=[
+                        "rds-db:connect",
+                    ],
+                    effect=iam.Effect.ALLOW,
+                    resources=[
+                        f"arn:aws:rds-db:{self.region}:{self.account}:dbuser:{FromMainStack.RDSdb.instance_identifier}/*"
+                    ],
+                ),
+                iam.PolicyStatement(
+                    sid="AllowRead",
+                    actions=[
+                        "rds:Describe*",
+                        "rds:ListTagsForResource",
+                    ],
+                    effect=iam.Effect.ALLOW,
+                    resources=[
+                        f"arn:aws:rds:{self.region}:{self.account}:db:MyRdsInstance",
+                    ],
+                ),
+            ],
+        )
+
+        # Create an IAM Group_of_Users for DB team members.
+        self.DB_Group = iam.Group(
+            self, "DatabaseGroup",  
+            group_name="DatabaseGroup"          
+        )
+
+        # Attach policy to DatabaseGroup.  
+        self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
 
 

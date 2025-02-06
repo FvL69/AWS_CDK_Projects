@@ -8,7 +8,7 @@
     managed AWS endpoints, such as load balancers or Network Address Translation (NAT) options.      
 
 **Diagram link:**  (projects initial diagram)    
-[Diagram0](../includes/diagrams/diagram0.png)    
+[Diagram0](../diagrams/diagram0.png)    
 
 #### Layer 1: Internet access resources. (public subnets)     
     To limit exposure to the internet, you can use the following in your architecture:  
@@ -80,7 +80,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 ## Target Group, ASG, Listener, EC2 Instance Connect Endpoint and IAM policy.   
 
 **Diagram link** (version 1: added admin access)  
-[Diagram1](../includes/diagrams/diagram1.png)
+[Diagram1](../diagrams/diagram1.png)
 
 ## The AWS services:
 

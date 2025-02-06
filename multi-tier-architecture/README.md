@@ -12,6 +12,6 @@ practical improvement to the project infrastructure.
 
 Diagram link: [InitialDiagram](./includes/diagrams/diagram0.png)  
 
-Project docs: [Project_documentation](./documentation/project_documentation.md)       
+Project docs: [Project_documentation](./includes//documentation/project_documentation.md)       
 
 Project code: [Project_code](./multi_tier_architecture/multi_tier_architecture_stack.py)  

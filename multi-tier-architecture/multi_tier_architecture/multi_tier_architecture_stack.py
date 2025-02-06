@@ -1,6 +1,5 @@
 from aws_cdk import (
     Stack,
-    aws_iam as iam,
     aws_ec2 as ec2,
     aws_elasticloadbalancingv2 as elbv2,
     aws_autoscaling as autoscaling,
@@ -117,7 +116,7 @@ class MultiTierArchitectureStack(Stack):
 
 
 
-        ###  EIC_ENDPOINT and IAM POLICIES  ###
+        ###  EIC_ENDPOINT  ###
 
         # EC2 Instance Connect Endpoint for secure connection with EC2's in private subnets.
         self.EIC_Endpoint = ec2.CfnInstanceConnectEndpoint(
@@ -154,7 +153,6 @@ class MultiTierArchitectureStack(Stack):
 
 
         ###   EC2 LAUNCH TEMPLATE, AUTO SCALING GROUP, APPLICATION LOAD BALANCER, TARGET GROUP, LISTENER  ###
-
 
         # EC2 launch template for ASG.
         self.launchTemplate = ec2.LaunchTemplate(
@@ -259,7 +257,7 @@ class MultiTierArchitectureStack(Stack):
 
         
 
-        ###  RDS DATABASE, RDS IAM Policy  ###
+        ###  RDS DATABASE  ###
 
         # RDS database. 
         self.RDSdb = rds.DatabaseInstance(
@@ -284,45 +282,6 @@ class MultiTierArchitectureStack(Stack):
         )
 
 
-        # IAM policy 'ReadOnlyAccess' for DatabaseGroup.
-        self.RDSReadOnlyPolicy = iam.Policy(
-            self, "RDSReadOnlyPolicy",
-            statements=[
-                iam.PolicyStatement(
-                    sid="AllowConnect",
-                    actions=[
-                        "rds-db:connect",
-                    ],
-                    effect=iam.Effect.ALLOW,
-                    resources=[
-                        f"arn:aws:rds-db:{self.region}:{self.account}:dbuser:{self.RDSdb.instance_identifier}/*"
-                    ],
-                ),
-                iam.PolicyStatement(
-                    sid="AllowRead",
-                    actions=[
-                        "rds:Describe*",
-                        "rds:ListTagsForResource",
-                    ],
-                    effect=iam.Effect.ALLOW,
-                    resources=[
-                        f"arn:aws:rds:{self.region}:{self.account}:db:MyRdsInstance",
-                    ],
-                ),
-            ],
-        )
-
-        # Create an IAM Group_of_Users for DB team members.
-        self.DB_Group = iam.Group(
-            self, "DatabaseGroup",  
-            group_name="DatabaseGroup"          
-        )
-
-        # Attach policy to DatabaseGroup.  
-        self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
-
-
-
         ###  S3 ### 
         """
         self.my_bucket = s3.Bucket(
@@ -332,7 +291,6 @@ class MultiTierArchitectureStack(Stack):
             removal_policy=s3._RemovalPolicy_9f93c814.DESTROY,
         )
         """
-
 
 
         ###  NETWORK ACL RULES  ###

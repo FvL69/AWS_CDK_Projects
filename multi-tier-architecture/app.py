@@ -2,9 +2,7 @@
 import os
 
 import aws_cdk as cdk
-
 from multi_tier_architecture.multi_tier_architecture_stack import MultiTierArchitectureStack
-
 
 app = cdk.App()
 MultiTierArchitectureStack(app, "MultiTierArchitectureStack",
