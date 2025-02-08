@@ -1,7 +1,7 @@
 from aws_cdk import (
+    NestedStack,
     aws_ec2 as ec2,
     aws_iam as iam,
-    NestedStack,
 )
 from constructs import Construct
 from multi_tier_architecture.multi_tier_architecture_stack import MultiTierArchitectureStack
@@ -11,10 +11,10 @@ class IamStack(NestedStack):
     def __init__(self, scope:Construct, id:str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # Storing main stack functionality in variable.
+        # Storing MTA_Stack functionality in variable.
         FromMainStack = MultiTierArchitectureStack()
 
-        # Create the Enpoint IAM policy and an AdminGroup to attach the IAM policy to.
+        # Create the EIC Endpoint IAM policy and an AdminGroup to attach the IAM policy to.
         # Any work force users would be added to the AdminGroup manually in the console.
         # Set variable eic_subnet_id.
         eic_subnet_id = FromMainStack.vpc.select_subnets(
