@@ -11,6 +11,7 @@ from aws_cdk import (
     CfnTag,
 )
 from constructs import Construct
+from security.iam_stack import IamStack
 import uuid
 
 class MultiTierArchitectureStack(Stack):
@@ -254,7 +255,6 @@ class MultiTierArchitectureStack(Stack):
             ssl_policy=elbv2.SslPolicy.RECOMMENDED_TLS, 
             open=True,
         )
-
         
 
         ###  RDS DATABASE  ###
@@ -291,6 +291,18 @@ class MultiTierArchitectureStack(Stack):
             removal_policy=s3._RemovalPolicy_9f93c814.DESTROY,
         )
         """
+
+
+        ### NESTED STACKS ###
+
+        # Create nested IAM stack.
+        self.iam_stack = IamStack(
+            self, "IamNestedStack",
+            vpc=self.vpc,
+            eic_endpoint=self.EIC_Endpoint,
+            rds_db=self.RDSdb,
+            admin_key_pair=self.AdminKeyPair.key_pair_name,
+        )
 
 
         ###  NETWORK ACL RULES  ###

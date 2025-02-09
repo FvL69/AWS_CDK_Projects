@@ -2,25 +2,26 @@ from aws_cdk import (
     NestedStack,
     aws_ec2 as ec2,
     aws_iam as iam,
+    aws_rds as rds,
 )
 from constructs import Construct
-from multi_tier_architecture.multi_tier_architecture_stack import MultiTierArchitectureStack
-
 
 class IamStack(NestedStack):
-    def __init__(self, scope:Construct, id:str, **kwargs) -> None:
+    def __init__(self, scope:Construct, id:str,
+                 vpc: ec2.Vpc,
+                 eic_endpoint: ec2.CfnInstanceConnectEndpoint,
+                 rds_db: rds.DatabaseInstance,
+                 admin_key_pair: str,
+                 **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # Parent Stack reference.
-        FromMainStack = MultiTierArchitectureStack(self, "Multi_tier_architecture_Stack")
-
-
+        
         # Create an EIC Endpoint IAM policy and an AdminGroup to attach the IAM policy to.
         # Any work force users would be added to the AdminGroup manually in the console.
 
         # Set variable eic_subnet_id for PolicyStatement resource arn.
-        eic_subnet_id = FromMainStack.vpc.select_subnets(
-                availability_zones=[FromMainStack.vpc.availability_zones[0]],
+        eic_subnet_id = vpc.select_subnets(
+                availability_zones=[vpc.availability_zones[0]],
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS).subnets[0].subnet_id
 
 
@@ -68,7 +69,7 @@ class IamStack(NestedStack):
                 sid="EC2InstanceConnect",
                 actions=["ec2-instance-connect:openTunnel"],
                 effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:ec2:{self.region}:{self.account}:instance-connect-endpoint/{FromMainStack.EIC_Endpoint.attr_id}"],
+                resources=[f"arn:aws:ec2:{self.region}:{self.account}:instance-connect-endpoint/{eic_endpoint.attr_id}"],
                 conditions={
                     "NumericEquals": {
                         "ec2-instance-connect:remotePort": 22,
@@ -161,7 +162,7 @@ class IamStack(NestedStack):
                     sid="KeyPairAccess",
                     actions=["ec2:DescribeKeyPairs"],
                     effect=iam.Effect.ALLOW,
-                    resources=[f"arn:aws:ec2:{self.region}:{self.account}:key-pair/{FromMainStack.AdminKeyPair.key_pair_name}"],
+                    resources=[f"arn:aws:ec2:{self.region}:{self.account}:key-pair/{admin_key_pair}"],
                 ),
                 iam.PolicyStatement(
                     sid="AMIAccess",
@@ -190,7 +191,7 @@ class IamStack(NestedStack):
                     ],
                     effect=iam.Effect.ALLOW,
                     resources=[
-                        f"arn:aws:rds-db:{self.region}:{self.account}:dbuser:{FromMainStack.RDSdb.instance_identifier}/*"
+                        f"arn:aws:rds-db:{self.region}:{self.account}:dbuser:{rds_db.instance_identifier}/*"
                     ],
                 ),
                 iam.PolicyStatement(
@@ -215,5 +216,6 @@ class IamStack(NestedStack):
 
         # Attach policy to DatabaseGroup.  
         self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
+
 
 
