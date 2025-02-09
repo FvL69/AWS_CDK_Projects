@@ -11,12 +11,14 @@ class IamStack(NestedStack):
     def __init__(self, scope:Construct, id:str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # Storing MTA_Stack functionality in variable.
-        FromMainStack = MultiTierArchitectureStack()
+        # Parent Stack reference.
+        FromMainStack = MultiTierArchitectureStack(self, "Multi_tier_architecture_Stack")
 
-        # Create the EIC Endpoint IAM policy and an AdminGroup to attach the IAM policy to.
+
+        # Create an EIC Endpoint IAM policy and an AdminGroup to attach the IAM policy to.
         # Any work force users would be added to the AdminGroup manually in the console.
-        # Set variable eic_subnet_id.
+
+        # Set variable eic_subnet_id for PolicyStatement resource arn.
         eic_subnet_id = FromMainStack.vpc.select_subnets(
                 availability_zones=[FromMainStack.vpc.availability_zones[0]],
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS).subnets[0].subnet_id
