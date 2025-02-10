@@ -199,7 +199,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 
    **Findings:**  
    Creating a new class called IamStack() with the necessary parameters for cross stack references for the local  
-   constructs and inheritance from its parent class, the MultiTierArchitecture class, through the NestedStack class parameter.     
+   constructs and inheritance from the NestedStack class designating it as a nested stack from the main stack.     
    The IamStack instance in the main stack will be treated as a single construct, as part of all the other constructs   
    in the stack. It also brings it into the main stacks scope for deployment.   
      
