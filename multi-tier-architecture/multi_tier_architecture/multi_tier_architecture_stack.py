@@ -295,7 +295,7 @@ class MultiTierArchitectureStack(Stack):
 
         ### NESTED STACKS ###
 
-        # Create nested IAM stack.
+        # Nested IAM stack.
         self.iam_stack = IamStack(
             self, "IamNestedStack",
             vpc=self.vpc,

@@ -91,7 +91,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    - Ephemeral ports (1024-65535) rules added between all subnets for responses to handle multiple client requests at the same time.  
    - DNS port rules between all subnets, it solved the unhealthy targets problem after i implemented the NACL's. Pointed out by Amazon Q.
    
-   **Difficulties:**  
+   **Findings:**  
    - Making sure that all services can communicate as intended. Every ingress rule has an egress counter part due to the stateless nature of the network ACL.
 
  
@@ -101,14 +101,14 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
     A security group acts as firewall on the instance level. By default all outbound traffic is allowed but i've restricted   
     this feature for more fine grained control of the data traffic. 
 
-   **Difficulties:**  
+   **Findings:**  
     Just making sure that all the data traffic can find it's way restricted solely to the intended services by applying the correct rules.  
 
    ### 3. Create an EC2 Instance (Linux 2023 AMI) in each ApplicationSubnet.  
    **Purpose:**  
    A web server in different AZ's for availability and DR.  
 
-   **Difficulties:**  
+   **Findings:**  
    For file handling i use the python build-in 'with open()' function and stored the file object in a variable using:     
    user_data = ec2.UserData.for_linux().add_commands(f.read()) which worked, but after upgrading the aws cli to v2 the  
    user data file would not upload in my EC2's anymore. This got me a bit confused because initially my code worked.  
@@ -141,7 +141,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    - ACM certificate (self signed) for SSL/TLS termination.   
    - Default_action prop: forward to target group.     
 
-   **Dificulties:**  
+   **Findings:**  
    To configure certificates: Sequence[IListenerCertificate] but the API reference only provides the attribute and   
    no methods! So it wouldn't cdk synth. I learned that concrete classes provide the actual implementations and  
    static factory methods. In this case: elbv2.ListenerCertificate.from_arn(self.certificate_arn).   
@@ -162,7 +162,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    - DB created in private isolated subnet, reachable only from EC2 web server in another private subnet.
    - To store web server data.
 
-   **Difficulties:**  
+   **Findings:**  
    - Installing mariadb105 as a SQL client for connecting to DB. (EC2 user-data)    
    - Because of secure VPC/subnet setup just using password auth for connecting to DB only from EC2's.  
    - For AdminGroup: Configure read-only access in MYSQL (DB), and read-only access for RDS service lvl with IAM Policy. (Stack)  
@@ -176,7 +176,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
  Intended specifically for secure management traffic use cases. The Service establishes a private tunnel from your computer to the endpoint   
  using the credentials for your IAM entity. Traffic is authenticated and authorized before it reaches your VPC.  
 
- **Difficulties:**  
+ **Findings:**  
  It was a bit of a search to figure out the correct property syntax for the EIC attributes and IAM policy.   
  For advice and quick search i use Amazone Q, e.g. i didn't know which endpoint to use for connecting with EC2 without a public IP.    
     
