@@ -198,7 +198,8 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    To move all IAM Policies/Roles from main stack to enhance project organization and maintainability.  
 
    **Findings:**  
-   Created a new class called IamStack(NestedStack) with the necessary parameters and inheriting from NestedStack.   
+   Creating a new class called IamStack() with the necessary parameters for cross stack references for the local  
+   constructs and inheritance from its parent class, the MultiTierArchitecture class, through the NestedStack class parameter.     
    The IamStack instance in the main stack will be treated as a single construct, as part of all the other constructs   
    in the stack. It also brings it into the main stacks scope for deployment.   
      
