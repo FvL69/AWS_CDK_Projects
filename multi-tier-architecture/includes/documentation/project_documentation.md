@@ -195,7 +195,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
 ### 8. Create nested IAM stack.  
 
    **Purpose:**  
-   To move all IAM Policies/Roles from main stack to enhance project organization and maintainability.  
+   To remove all IAM Policies/Roles from main stack to enhance the organization of the projects infrastructure and maintainability.  
 
    **Findings:**  
    Creating a new class called IamStack() with the necessary parameters for cross stack references for the local  
