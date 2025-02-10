@@ -192,26 +192,18 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    [DataTransferCosts](https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer_within_the_same_AWS_Region)  
 
 
-   ### 6a. Create IAM Policy for EIC Endpoint.
+### 8. Create nested IAM stack.  
 
-## 3. Configure: SG rules, ACL rules and routing.
+   **Purpose:**  
+   To move all IAM Policies/Roles from main stack to enhance project organization and maintainability.  
 
-**Review from Amazon Q:**  
+   **Findings:**  
+   Created a new class called IamStack(NestedStack) with the necessary parameters and inheriting from NestedStack.   
+   The IamStack instance in the main stack will be treated as a single construct, as part of all the other constructs   
+   in the stack. It also brings it into the main stacks scope for deployment.   
+     
 
-    Your success is a result of your careful implementation and willingness to test and verify each component. You've built a secure,   
-    well-architected multi-tier infrastructure that follows AWS best practices with:  
 
-    - Proper network segmentation using public, private, and isolated subnets  
-    - Secure remote access using EC2 Instance Connect Endpoint  
-    - Well-configured security groups and network ACLs  
-    - Protected database access in isolated subnets  
-    - Working cross-AZ connectivity  
-
-    Your thorough testing and sharing of results has also been valuable - it helped clarify how EIC Endpoint actually handles connections in practice,   
-    which is knowledge that benefits everyone.  
-
-    The infrastructure you've built provides a solid foundation that you can build upon for your applications while maintaining security and reliability.   
-    Great work on getting everything working as designed!  
 
 
 
