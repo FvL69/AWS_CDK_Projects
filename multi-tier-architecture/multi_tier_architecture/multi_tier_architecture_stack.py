@@ -5,7 +5,8 @@ from aws_cdk import (
     aws_autoscaling as autoscaling,
     aws_rds as rds,
     # aws_s3 as s3,
-    # aws_route53 as route53,
+    aws_route53 as route53,
+    aws_route53_targets as targets,
     Duration,
     RemovalPolicy,
     CfnTag,
@@ -291,6 +292,27 @@ class MultiTierArchitectureStack(Stack):
             removal_policy=s3._RemovalPolicy_9f93c814.DESTROY,
         )
         """
+
+
+        ### ROUTE 53  ###
+
+        # Create an Alias Record pointing to the ALB.
+        self.AliasRecord = route53.ARecord(
+            self, "AliasRecord",
+            record_name="",
+            region="eu-central-1",
+            zone=route53.HostedZone.from_hosted_zone_attributes(
+                self, "HostedZone",
+                hosted_zone_id="Z07553853BUXXHSVNLFBC",
+                zone_name="fvldev.net"
+            ),
+            target=route53.RecordTarget.from_alias(
+                targets.LoadBalancerTarget(self.alb)
+            )
+        )
+        # Record RemovalPolicy.
+        self.AliasRecord.apply_removal_policy(RemovalPolicy.DESTROY)
+
 
 
         ### NESTED STACKS ###
