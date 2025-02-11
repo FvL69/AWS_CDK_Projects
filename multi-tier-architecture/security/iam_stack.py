@@ -7,6 +7,7 @@ from aws_cdk import (
 from constructs import Construct
 
 class IamStack(NestedStack):
+
     def __init__(self, scope:Construct, id:str,
                  vpc: ec2.Vpc,
                  eic_endpoint: ec2.CfnInstanceConnectEndpoint,
@@ -15,11 +16,25 @@ class IamStack(NestedStack):
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        
-        # Create an EIC Endpoint IAM policy and an AdminGroup to attach the IAM policy to.
-        # Any work force users would be added to the AdminGroup manually in the console.
 
-        # Set variable eic_subnet_id for PolicyStatement resource arn.
+        ### IAM GROUP-OF-USERS  ###
+
+        self.AdminGroup = iam.Group(
+            self, "AdminGroup",
+            group_name="AdminGroup",
+        )
+
+        self.DatabaseGroup = iam.Group(
+            self, "DatabaseGroup",  
+            group_name="DatabaseGroup"          
+        )
+
+
+        ###  IAM POLICIES  ###
+
+        # Create an EIC Endpoint IAM policy for AdminGroup.
+
+        # Set variable eic_subnet_id for EICEndpointPolicy resources arn value.
         eic_subnet_id = vpc.select_subnets(
                 availability_zones=[vpc.availability_zones[0]],
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS).subnets[0].subnet_id
@@ -63,7 +78,7 @@ class IamStack(NestedStack):
             ]   
         )       
 
-        # Adding additional permissions to use EIC Endpoint to connect to instances.
+        # Adding additional permissions to instantiate EIC Endpoint connection.
         self.EIC_Endpoint_Policy.add_statements(
             iam.PolicyStatement(
                 sid="EC2InstanceConnect",
@@ -107,18 +122,10 @@ class IamStack(NestedStack):
             )
         )
 
-        # Create an IAM Group-of-Users for administrative team members.
-        self.AdminGroup = iam.Group(
-            self, "AdminGroup",
-            group_name="AdminGroup",
-        )
-
         # Attach Endpoint policy to AdminGroup.
         self.EIC_Endpoint_Policy.attach_to_group(self.AdminGroup)
 
 
-
-        ###  IAM lAUNCH TEMPLATE POLICY  ###
 
         # Create launch template policy.
         self.launchTemplatePolicy = iam.Policy(
@@ -178,8 +185,6 @@ class IamStack(NestedStack):
 
 
 
-        ###  IAM DATABASE POLICY  ###
-
         # IAM policy 'ReadOnlyAccess' for DatabaseGroup.
         self.RDSReadOnlyPolicy = iam.Policy(
             self, "RDSReadOnlyPolicy",
@@ -208,14 +213,8 @@ class IamStack(NestedStack):
             ],
         )
 
-        # Create an IAM Group_of_Users for DB team members.
-        self.DB_Group = iam.Group(
-            self, "DatabaseGroup",  
-            group_name="DatabaseGroup"          
-        )
-
         # Attach policy to DatabaseGroup.  
-        self.RDSReadOnlyPolicy.attach_to_group(self.DB_Group)
+        self.RDSReadOnlyPolicy.attach_to_group(self.DatabaseGroup)
 
 
 
