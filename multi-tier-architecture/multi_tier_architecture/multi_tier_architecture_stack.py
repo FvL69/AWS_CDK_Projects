@@ -296,11 +296,27 @@ class MultiTierArchitectureStack(Stack):
 
         ### ROUTE 53  ###
 
+        # Create Health Check.
+        self.HealthCheck = route53.CfnHealthCheck(
+            self, "HealthCheck",
+            health_check_config=route53.CfnHealthCheck.HealthCheckConfigProperty(
+                port=80,
+                resource_path="/",
+                type="HTTP",
+                fully_qualified_domain_name="alb.fvldev.net",
+                request_interval=30,
+                failure_threshold=3,
+                measure_latency=True,
+                enable_sni=None,
+            ),
+        )
+
         # Create an Alias Record pointing to the ALB.
         self.AliasRecord = route53.ARecord(
             self, "AliasRecord",
             record_name="",
             region="eu-central-1",
+            health_check=self.HealthCheck,
             zone=route53.HostedZone.from_hosted_zone_attributes(
                 self, "HostedZone",
                 hosted_zone_id="Z07553853BUXXHSVNLFBC",

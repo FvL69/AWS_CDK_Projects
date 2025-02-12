@@ -199,22 +199,22 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    ROUTE 53 is the AWS DNS service. Any requests made to the webservers can use my fvldev.net domain name instead    
    of the ALB's DNS name which is more user friendly.   
    I've created an Alias Record for my Public Hosted Zone which is necessary if you want to map     
-   a host name to an AWS service, in this case the Application LoadBalancer.   
+   a host name to an AWS service, in this case the Application Load Balancer.   
 
    **Findings:**  
-   For an Alias record you can also use the apex domain, fvldev.net, by leaving the record_name property empty.  
+   For an Alias record you can also use the apex domain name, fvldev.net, by leaving the record_name property empty.  
    So basically i've created an A record, A = IPv4, of which i created an Alias record in my Public Hosted Zone.  
    The target= property is where the Alias config is done. In contrast to other record types, an Alias record  
    needs no TTL set because AWS uses the default TTL of the service the hostname points to.  
 
    **note:**  
 
-        I've tried to implement: aws_cdk.aws_route53.IRecordSet(), but that didn't work.   
-        To make it work i needed to use: aws_cdk.aws_route53.RecordSet(). 
-        The key difference is that IRecordSet is an interface, while RecordSet is a concrete class that implements that interface.  
+        I've tried to implement: aws_cdk.aws_route53.IHostedZone(), but that didn't work.   
+        To make it work i needed to use: aws_cdk.aws_route53.HostedZone(). 
+        The key difference is that IHostedZone is an interface, while HostedZone is a concrete class that implements that interface.  
 
         According to Amazon Q:  
-        An interface (IRecordSet) only defines what properties and methods should exist, but doesn't provide the actual implementation.  
+        An interface (IHostedZone) only defines what properties and methods should exist, but doesn't provide the actual implementation.  
         It's like a contract or blueprint.
 
 ### 9. Create nested IAM stack.  
@@ -225,7 +225,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
    **Findings:**  
    Creating a new class called IamStack() with the necessary parameters to enable cross stack references for the local  
    constructs and inheritance from the NestedStack class declaring it as a nested stack from the main stack.     
-   The IamStack instance in the main stack will be treated as a single construct, as part of all the other constructs   
+   The IamStack instance in the main stack will be treated as a single construct, as all the other constructs   
    in the stack. It also brings it into the main stacks scope for deployment.   
      
 
