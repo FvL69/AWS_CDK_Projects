@@ -217,7 +217,18 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
         An interface (IHostedZone) only defines what properties and methods should exist, but doesn't provide the actual implementation.  
         It's like a contract or blueprint.
 
-### 9. Create nested IAM stack.  
+
+### 9. Create ROUTE 53 endpoint health check (ALB).  
+
+   **Purpose:**  
+   To monitor the health of the Application Load Balancer. The health check will send HTTP requests to the FQDN   
+   to determine if the ALB is responding properly.   
+   (I will upgrade to HTTPS requests)    
+
+   **Finding:**  
+
+
+### XX. Create nested IAM stack.  
 
    **Purpose:**  
    To remove all IAM Policies/Roles from main stack to enhance the organization and maintainability of the projects infrastructure.  

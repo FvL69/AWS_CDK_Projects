@@ -10,7 +10,7 @@ The diagram link below is the initial diagram as depicted in the Skill Builder N
 documentation you'll find diagram links that follow the evolvement of the project as i will introduce new AWS services for   
 practical improvement to the project infrastructure.         
 
-Diagram link: [InitialDiagram](./includes/diagrams/diagram0.png)  
+Diagram link: [Diagram](./includes/diagrams/diagram1.png)  
 
 Project docs: [Project_documentation](./includes//documentation/project_documentation.md)       
 

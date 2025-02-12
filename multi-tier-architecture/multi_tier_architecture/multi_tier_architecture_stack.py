@@ -303,11 +303,11 @@ class MultiTierArchitectureStack(Stack):
                 port=80,
                 resource_path="/",
                 type="HTTP",
-                fully_qualified_domain_name="alb.fvldev.net",
+                fully_qualified_domain_name=self.alb.load_balancer_dns_name,
                 request_interval=30,
                 failure_threshold=3,
                 measure_latency=True,
-                enable_sni=None,
+                enable_sni=None, 
             ),
         )
 
