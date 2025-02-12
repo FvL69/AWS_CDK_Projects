@@ -316,7 +316,6 @@ class MultiTierArchitectureStack(Stack):
             self, "AliasRecord",
             record_name="",
             region="eu-central-1",
-            health_check=self.HealthCheck,
             zone=route53.HostedZone.from_hosted_zone_attributes(
                 self, "HostedZone",
                 hosted_zone_id="Z07553853BUXXHSVNLFBC",
