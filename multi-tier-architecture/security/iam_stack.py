@@ -21,12 +21,10 @@ class IamStack(NestedStack):
 
         self.AdminGroup = iam.Group(
             self, "AdminGroup",
-            group_name="AdminGroup",
         )
 
         self.DatabaseGroup = iam.Group(
             self, "DatabaseGroup",  
-            group_name="DatabaseGroup"          
         )
 
 

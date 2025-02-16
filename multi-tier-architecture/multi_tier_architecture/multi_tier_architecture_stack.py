@@ -131,6 +131,8 @@ class MultiTierArchitectureStack(Stack):
             security_group_ids=[self.SG_EIC_Endpoint.security_group_id],
             tags=[CfnTag(key="Name", value="EIC_Endpoint")],
         )
+        # Removal policy for EIC Endpoint.
+        self.EIC_Endpoint.apply_removal_policy(policy=RemovalPolicy.DESTROY)
 
 
         ###  KEY PAIR, USER DATA  ###
@@ -300,14 +302,13 @@ class MultiTierArchitectureStack(Stack):
         self.HealthCheck = route53.CfnHealthCheck(
             self, "HealthCheck",
             health_check_config=route53.CfnHealthCheck.HealthCheckConfigProperty(
-                port=80,
+                port=443,
                 resource_path="/",
-                type="HTTP",
+                type="HTTPS",
                 fully_qualified_domain_name=self.alb.load_balancer_dns_name,
                 request_interval=30,
                 failure_threshold=3,
-                measure_latency=True,
-                enable_sni=None, 
+                enable_sni=True,
             ),
         )
 

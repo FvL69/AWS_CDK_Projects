@@ -179,6 +179,8 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
  **Findings:**  
  It was a bit of a search to figure out the correct property syntax for the EIC attributes and IAM policy.   
  For advice and quick search i use Amazone Q, e.g. i didn't know which endpoint to use for connecting with EC2 without a public IP.    
+
+ Added a RemovalPolicy.Destroy in case of a stack update so i don't need to manually delete the EIC Endpoint.  
     
     EIC_Endpoint benefits:  
         - No need for bastion hosts  
