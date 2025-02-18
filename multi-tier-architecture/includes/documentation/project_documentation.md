@@ -219,7 +219,7 @@ EIP's, Gateway attachments and a through an IAM policy restricted default SG wil
         An interface (IHostedZone) only defines what properties and methods should exist, but doesn't provide the actual implementation.  
         It's like a contract or blueprint.
 
-
+[Diagram2](../diagrams/diagram2.png)
 ### 9. Create ROUTE 53 endpoint health check (ALB).  
 
    **Purpose:**  
